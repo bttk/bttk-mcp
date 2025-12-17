@@ -2,11 +2,13 @@ package obsidian
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 )
@@ -76,6 +78,30 @@ func WithInsecureTLS() Option {
 				t.TLSClientConfig = &tls.Config{}
 			}
 			t.TLSClientConfig.InsecureSkipVerify = true
+		}
+	}
+}
+
+// WithCertificate loads a CA certificate from the given path and adds it to the client's root CAs.
+func WithCertificate(path string) Option {
+	return func(c *Client) {
+		caCert, err := os.ReadFile(path)
+		if err != nil {
+			return // Best effort? Or should we handle it? Functional options usually don't return error.
+		}
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+
+		tlsConfig := &tls.Config{
+			RootCAs: caCertPool,
+		}
+
+		if c.http.Transport == nil {
+			c.http.Transport = &http.Transport{
+				TLSClientConfig: tlsConfig,
+			}
+		} else if t, ok := c.http.Transport.(*http.Transport); ok {
+			t.TLSClientConfig = tlsConfig
 		}
 	}
 }

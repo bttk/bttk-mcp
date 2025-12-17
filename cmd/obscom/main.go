@@ -26,7 +26,13 @@ func main() {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
-	client, err := obsidian.NewClient(cfg.Obsidian.URL, cfg.Obsidian.APIKey, obsidian.WithInsecureTLS())
+	var opts []obsidian.Option
+	if cfg.Obsidian.Cert != "" {
+		opts = append(opts, obsidian.WithCertificate(cfg.Obsidian.Cert))
+	} else {
+		opts = append(opts, obsidian.WithInsecureTLS())
+	}
+	client, err := obsidian.NewClient(cfg.Obsidian.URL, cfg.Obsidian.APIKey, opts...)
 	if err != nil {
 		log.Fatalf("failed to create client: %v", err)
 	}
