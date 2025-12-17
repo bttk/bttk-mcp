@@ -12,6 +12,9 @@ type Config struct {
 		Cert   string `json:"cert"`
 		APIKey string `json:"apikey"`
 	} `json:"obsidian"`
+	MCP struct {
+		Tools map[string]bool `json:"tools"`
+	} `json:"mcp"`
 }
 
 // Load loads the configuration from a JSON file.
