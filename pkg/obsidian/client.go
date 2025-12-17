@@ -23,6 +23,7 @@ type Client struct {
 	Periodic   *PeriodicService
 	Search     *SearchService
 	Commands   *CommandService
+	Open       *OpenService
 }
 
 // Option is a functional option for configuring the Client.
@@ -85,6 +86,7 @@ func (c *Client) initializeServices() {
 	c.Periodic = &PeriodicService{client: c}
 	c.Search = &SearchService{client: c}
 	c.Commands = &CommandService{client: c}
+	c.Open = &OpenService{client: c}
 }
 
 func (c *Client) do(req *http.Request, v interface{}) error {
@@ -100,7 +102,7 @@ func (c *Client) do(req *http.Request, v interface{}) error {
 		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil {
 			return &errResp
 		}
-		
+
 		bodyBytes, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("API error: status code %d, body: %s", resp.StatusCode, string(bodyBytes))
 	}
