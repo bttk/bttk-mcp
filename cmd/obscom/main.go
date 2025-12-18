@@ -4,11 +4,11 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"os"
 
 	"bttk.dev/agent/pkg/obsidian"
 	"bttk.dev/agent/pkg/obsidian/config"
+	"github.com/rs/zerolog/log"
 )
 
 func main() {
@@ -21,9 +21,12 @@ func main() {
 	configPath := fs.String("config", "config.json", "path to the configuration file")
 	fs.Parse(os.Args[3:])
 
+	// Initialize zerolog
+	// log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+
 	cfg, err := config.Load(*configPath)
 	if err != nil {
-		log.Fatalf("failed to load config: %v", err)
+		log.Fatal().Err(err).Msg("failed to load config")
 	}
 
 	var opts []obsidian.Option
@@ -34,12 +37,12 @@ func main() {
 	}
 	client, err := obsidian.NewClient(cfg.Obsidian.URL, cfg.Obsidian.APIKey, opts...)
 	if err != nil {
-		log.Fatalf("failed to create client: %v", err)
+		log.Fatal().Err(err).Msg("failed to create client")
 	}
 
 	commands, err := client.Commands.List(context.Background())
 	if err != nil {
-		log.Fatalf("failed to list commands: %v", err)
+		log.Fatal().Err(err).Msg("failed to list commands")
 	}
 
 	fmt.Printf("%-30s %s\n", "NAME", "ID")

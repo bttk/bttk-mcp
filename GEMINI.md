@@ -40,6 +40,10 @@ A custom Go client for the Obsidian Local REST API.
 | `create_or_update_file` | Creates a new file or updates an existing one. |
 | `open_file` | Opens a specific file in the Obsidian UI. |
 
+### MCP structured content
+
+StructuredContent must serialize to a JSON object, not an array.
+
 ## Configuration (`config.json`)
 
 The project uses a `config.json` file to specify API credentials and enable/disable specific tools.

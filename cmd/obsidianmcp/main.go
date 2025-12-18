@@ -4,14 +4,19 @@ import (
 	"context"
 	"flag"
 	"io"
-	"log"
+	stdlog "log"
+	"log/syslog"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"bttk.dev/agent/pkg/obsidian"
 	"bttk.dev/agent/pkg/obsidian/config"
+	"bttk.dev/agent/pkg/obsidianmcp"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 func main() {
@@ -21,11 +26,12 @@ func main() {
 	flag.BoolVar(&verbose, "v", false, "enable verbose logging of input/output")
 	flag.Parse()
 
+	setupLogger()
+
 	// Load configuration
 	cfg, err := config.Load(configPath)
 	if err != nil {
-		log.Printf("failed to load %s: %v", configPath, err)
-		os.Exit(1)
+		log.Fatal().Err(err).Msgf("failed to load %s", configPath)
 	}
 
 	// Initialize Obsidian Client
@@ -37,7 +43,7 @@ func main() {
 	}
 	client, err := obsidian.NewClient(cfg.Obsidian.URL, cfg.Obsidian.APIKey, opts...)
 	if err != nil {
-		log.Fatalf("failed to create client: %v", err)
+		log.Fatal().Err(err).Msg("failed to create client")
 	}
 
 	// Create MCP Server
@@ -48,26 +54,27 @@ func main() {
 
 	// Tool registry map
 	toolRegistry := map[string]func(*server.MCPServer, *obsidian.Client){
-		"get_active_file":       registerGetActiveFile,
-		"append_active_file":    registerAppendActiveFile,
-		"patch_active_file":     registerPatchActiveFile,
-		"search_simple":         registerSearchSimple,
-		"search_json_logic":     registerSearchJSONLogic,
-		"get_daily_note":        registerGetDailyNote,
-		"get_file":              registerGetFile,
-		"list_files":            registerListFiles,
-		"create_or_update_file": registerCreateOrUpdateFile,
-		"open_file":             registerOpenFile,
+		"get_active_file":       obsidianmcp.RegisterGetActiveFile,
+		"append_active_file":    obsidianmcp.RegisterAppendActiveFile,
+		"patch_active_file":     obsidianmcp.RegisterPatchActiveFile,
+		"search_simple":         obsidianmcp.RegisterSearchSimple,
+		"search_json_logic":     obsidianmcp.RegisterSearchJSONLogic,
+		"get_daily_note":        obsidianmcp.RegisterGetDailyNote,
+		"get_file":              obsidianmcp.RegisterGetFile,
+		"list_files":            obsidianmcp.RegisterListFiles,
+		"create_or_update_file": obsidianmcp.RegisterCreateOrUpdateFile,
+		"open_file":             obsidianmcp.RegisterOpenFile,
 	}
 
 	// Register tools based on config
 	for name, registerFunc := range toolRegistry {
 		if enabled, ok := cfg.MCP.Tools[name]; ok && enabled {
+			log.Info().Msgf("Registering tool %s", name)
 			registerFunc(s, client)
 		} else if !ok {
 			// If not in config, we can decide to enable by default or skip.
 			// Given the user request, skipping seems safer if we want strict control.
-			log.Printf("Tool %s not found in config, skipping", name)
+			log.Warn().Msgf("Tool %s not found in config, skipping", name)
 		}
 	}
 
@@ -79,8 +86,7 @@ func main() {
 		out = &loggingWriter{os.Stdout}
 	}
 	if err := ServeStdio(s, in, out); err != nil {
-		log.Printf("Server error: %v", err)
-		os.Exit(1)
+		log.Fatal().Err(err).Msg("Server error")
 	}
 }
 
@@ -91,7 +97,7 @@ type loggingReader struct {
 func (lr *loggingReader) Read(p []byte) (n int, err error) {
 	n, err = lr.r.Read(p)
 	if n > 0 {
-		log.Printf("IN: %s", p[:n])
+		log.Info().Msgf("IN: %q", p[:n])
 	}
 	return n, err
 }
@@ -101,7 +107,11 @@ type loggingWriter struct {
 }
 
 func (lw *loggingWriter) Write(p []byte) (n int, err error) {
-	log.Printf("OUT: %s", p)
+	if len(p) < 50 {
+		log.Info().Msgf("OUT: %q", p)
+	} else {
+		log.Info().Msgf("OUT: %q...", p[:50])
+	}
 	return lw.w.Write(p)
 }
 
@@ -121,4 +131,18 @@ func ServeStdio(srv *server.MCPServer, in io.Reader, out io.Writer) error {
 	}()
 
 	return s.Listen(ctx, in, out)
+}
+
+func setupLogger() {
+	syslogger, err := syslog.New(stdlog.LstdFlags, "obsidianmcp")
+	if err != nil {
+		panic(err)
+	}
+	log.Logger = log.Output(zerolog.MultiLevelWriter(
+		zerolog.SyslogLevelWriter(syslogger),
+		zerolog.ConsoleWriter{
+			Out:        os.Stderr,
+			TimeFormat: time.Stamp,
+		}))
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 }
