@@ -11,8 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	"bttk.dev/agent/pkg/config"
 	"bttk.dev/agent/pkg/obsidian"
-	"bttk.dev/agent/pkg/obsidian/config"
 	"bttk.dev/agent/pkg/obsidianmcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/rs/zerolog"
@@ -22,7 +22,7 @@ import (
 func main() {
 	var configPath string
 	var verbose bool
-	flag.StringVar(&configPath, "config", "config.json", "path to config file")
+	flag.StringVar(&configPath, "config", "", "path to config file (default: ~/.config/bagent/config.json)")
 	flag.BoolVar(&verbose, "v", false, "enable verbose logging of input/output")
 	flag.Parse()
 

@@ -1,0 +1,22 @@
+{
+    "obsidian": {
+        "url": "https://127.0.0.1:27124",
+        "cert": "obsidian.crt",
+        "apikey": "abc123"
+    },
+    "mcp": {
+        "tools": {
+            "get_active_file": true,
+            "append_active_file": true,
+            "patch_active_file": false,
+            "search_simple": true,
+            "search_json_logic": true,
+            "search_dql": true,
+            "get_daily_note": true,
+            "get_file": false,
+            "list_files": false,
+            "create_or_update_file": false,
+            "open_file": true
+        }
+    }
+}

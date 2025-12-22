@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
+	"bttk.dev/agent/pkg/config"
 	"bttk.dev/agent/pkg/obsidian"
-	"bttk.dev/agent/pkg/obsidian/config"
 	"github.com/rs/zerolog/log"
 )
 
@@ -18,7 +18,7 @@ func main() {
 	}
 
 	fs := flag.NewFlagSet("obscom", flag.ExitOnError)
-	configPath := fs.String("config", "config.json", "path to the configuration file")
+	configPath := fs.String("config", "", "path to the configuration file (default: ~/.config/bagent/config.json)")
 	fs.Parse(os.Args[3:])
 
 	// Initialize zerolog

@@ -91,5 +91,5 @@ go run ./cmd/obscom command list -config config.json
 ## Project Structure
 - `cmd/`: Application entry points.
 - `pkg/obsidian/`: Core API client implementation.
-- `pkg/obsidian/config/`: Configuration management logic.
+- `pkg/config/`: Configuration management logic.
 - `obsidian.crt`: (Optional) Certificate for secure communication if not using `InsecureSkipVerify`.

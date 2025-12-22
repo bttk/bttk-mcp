@@ -50,7 +50,7 @@ func TestGetActiveFile(t *testing.T) {
 
 	res, err := srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
 		Params: mcp.CallToolParams{
-			Name: "get_active_file",
+			Name: "obsidian_get_active_file",
 		},
 	})
 	if err != nil {
@@ -100,7 +100,7 @@ func TestAppendActiveFile(t *testing.T) {
 
 	_, err = srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
 		Params: mcp.CallToolParams{
-			Name: "append_active_file",
+			Name: "obsidian_append_active_file",
 			Arguments: map[string]interface{}{
 				"content": expectedContent,
 			},
@@ -142,7 +142,7 @@ func TestPatchActiveFile(t *testing.T) {
 
 	_, err = srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
 		Params: mcp.CallToolParams{
-			Name: "patch_active_file",
+			Name: "obsidian_patch_active_file",
 			Arguments: map[string]interface{}{
 				"operation":   "append",
 				"target_type": "heading",
@@ -186,7 +186,7 @@ func TestSearchSimple(t *testing.T) {
 
 	res, err := srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
 		Params: mcp.CallToolParams{
-			Name: "search_simple",
+			Name: "obsidian_search_simple",
 			Arguments: map[string]interface{}{
 				"query": "test query",
 			},
@@ -228,7 +228,7 @@ func TestSearchJSONLogic(t *testing.T) {
 
 	_, err = srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
 		Params: mcp.CallToolParams{
-			Name: "search_json_logic",
+			Name: "obsidian_search_json_logic",
 			Arguments: map[string]interface{}{
 				"query": query,
 			},
@@ -265,7 +265,7 @@ func TestGetDailyNote(t *testing.T) {
 
 	_, err = srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
 		Params: mcp.CallToolParams{
-			Name: "get_daily_note",
+			Name: "obsidian_get_daily_note",
 		},
 	})
 	if err != nil {
@@ -301,7 +301,7 @@ func TestGetFile(t *testing.T) {
 
 	_, err = srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
 		Params: mcp.CallToolParams{
-			Name: "get_file",
+			Name: "obsidian_get_file",
 			Arguments: map[string]interface{}{
 				"path": "folder/file.md",
 			},
@@ -338,7 +338,7 @@ func TestListFiles(t *testing.T) {
 
 	_, err = srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
 		Params: mcp.CallToolParams{
-			Name: "list_files",
+			Name: "obsidian_list_files",
 			Arguments: map[string]interface{}{
 				"path": "folder",
 			},
@@ -374,7 +374,7 @@ func TestCreateOrUpdateFile(t *testing.T) {
 
 	_, err = srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
 		Params: mcp.CallToolParams{
-			Name: "create_or_update_file",
+			Name: "obsidian_create_or_update_file",
 			Arguments: map[string]interface{}{
 				"path":    "new/file.md",
 				"content": "New content",
@@ -411,7 +411,7 @@ func TestOpenFile(t *testing.T) {
 
 	_, err = srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
 		Params: mcp.CallToolParams{
-			Name: "open_file",
+			Name: "obsidian_open_file",
 			Arguments: map[string]interface{}{
 				"path": "my/file.md",
 			},
