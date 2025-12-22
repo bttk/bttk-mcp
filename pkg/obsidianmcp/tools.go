@@ -187,6 +187,36 @@ func RegisterSearchJSONLogic(s *server.MCPServer, client *obsidian.Client) {
 	s.AddTool(SearchJSONLogicTool(), SearchJSONLogicHandler(client))
 }
 
+// SearchDQLTool returns the tool definition
+func SearchDQLTool() mcp.Tool {
+	return mcp.NewTool("obsidian_search_dql",
+		mcp.WithReadOnlyHintAnnotation(true),
+		mcp.WithDescription("Search the vault using Dataview Query Language (DQL)"),
+		mcp.WithString("query", mcp.Required(), mcp.Description("DQL query (e.g., 'TABLE file.mtime FROM \"folder\"')")),
+	)
+}
+
+// SearchDQLHandler returns the tool handler
+func SearchDQLHandler(client *obsidian.Client) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args := getArgs(request)
+		query, _ := args["query"].(string)
+
+		results, err := client.Search.Dataview(ctx, query)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to search: %v", err)), nil
+		}
+
+		return mcp.NewToolResultJSON(map[string]interface{}{
+			"results": results,
+		})
+	}
+}
+
+func RegisterSearchDQL(s *server.MCPServer, client *obsidian.Client) {
+	s.AddTool(SearchDQLTool(), SearchDQLHandler(client))
+}
+
 // GetDailyNoteTool returns the tool definition
 func GetDailyNoteTool() mcp.Tool {
 	return mcp.NewTool("obsidian_get_daily_note",

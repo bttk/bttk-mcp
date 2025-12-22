@@ -59,6 +59,7 @@ func main() {
 		"patch_active_file":     obsidianmcp.RegisterPatchActiveFile,
 		"search_simple":         obsidianmcp.RegisterSearchSimple,
 		"search_json_logic":     obsidianmcp.RegisterSearchJSONLogic,
+		"search_dql":            obsidianmcp.RegisterSearchDQL,
 		"get_daily_note":        obsidianmcp.RegisterGetDailyNote,
 		"get_file":              obsidianmcp.RegisterGetFile,
 		"list_files":            obsidianmcp.RegisterListFiles,
