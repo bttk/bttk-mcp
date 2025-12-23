@@ -21,6 +21,13 @@ type Client struct {
 	Service *gmail.Service
 }
 
+// GmailAPI defines the interface for interacting with Gmail.
+// This allows for mocking in tests.
+type GmailAPI interface {
+	SearchMessages(query string) ([]*gmail.Message, error)
+	GetMessage(id string) (*gmail.Message, error)
+}
+
 // NewClient creates a new Gmail client.
 // It handles the OAuth2 flow if a valid token is not found.
 func NewClient(credentialsPath, tokenPath string) (*Client, error) {

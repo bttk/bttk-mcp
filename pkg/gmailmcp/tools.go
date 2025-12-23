@@ -10,12 +10,20 @@ import (
 )
 
 // AddTools registers Gmail tools to the MCP server.
-func AddTools(s *server.MCPServer, client *gmail.Client) {
-	// Tool: gmail_search
-	s.AddTool(mcp.NewTool("gmail_search",
+func AddTools(s *server.MCPServer, client gmail.GmailAPI) {
+	s.AddTool(GmailSearchTool(), GmailSearchHandler(client))
+	s.AddTool(GmailReadTool(), GmailReadHandler(client))
+}
+
+func GmailSearchTool() mcp.Tool {
+	return mcp.NewTool("gmail_search",
 		mcp.WithDescription("Search for Gmail messages using a query string."),
 		mcp.WithString("query", mcp.Required(), mcp.Description("The search query (e.g., 'from:user@example.com', 'subject:meeting').")),
-	), func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	)
+}
+
+func GmailSearchHandler(client gmail.GmailAPI) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args, ok := request.Params.Arguments.(map[string]interface{})
 		if !ok {
 			return mcp.NewToolResultError("arguments must be a map"), nil
@@ -42,13 +50,18 @@ func AddTools(s *server.MCPServer, client *gmail.Client) {
 		summary += fmt.Sprintf("\nFound %d messages. Use gmail_read with an ID to see content.", len(msgs))
 
 		return mcp.NewToolResultText(summary), nil
-	})
+	}
+}
 
-	// Tool: gmail_read
-	s.AddTool(mcp.NewTool("gmail_read",
+func GmailReadTool() mcp.Tool {
+	return mcp.NewTool("gmail_read",
 		mcp.WithDescription("Read the content of a specific Gmail message by ID."),
 		mcp.WithString("message_id", mcp.Required(), mcp.Description("The ID of the message to read.")),
-	), func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	)
+}
+
+func GmailReadHandler(client gmail.GmailAPI) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args, ok := request.Params.Arguments.(map[string]interface{})
 		if !ok {
 			return mcp.NewToolResultError("arguments must be a map"), nil
@@ -88,5 +101,5 @@ func AddTools(s *server.MCPServer, client *gmail.Client) {
 		}
 
 		return mcp.NewToolResultText(content), nil
-	})
+	}
 }
