@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"bttk.dev/agent/pkg/obsidian"
+	"github.com/bttk/bttk-mcp/pkg/obsidian"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/mcptest"
 	"github.com/mark3labs/mcp-go/server"

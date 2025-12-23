@@ -26,11 +26,11 @@ type Config struct {
 }
 
 // Load loads the configuration from a JSON file.
-// If path is empty, it searches for "bagent/config.json" in XDG config directories.
+// If path is empty, it searches for "bttk-mcp/config.json" in XDG config directories.
 func Load(path string) (*Config, error) {
 	if path == "" {
 		var err error
-		path, err = xdg.SearchConfigFile("bagent/config.json")
+		path, err = xdg.SearchConfigFile("bttk-mcp/config.json")
 		if err != nil {
 			return nil, err
 		}

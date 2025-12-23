@@ -9,9 +9,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"bttk.dev/agent/pkg/config"
-	"bttk.dev/agent/pkg/gmail"
-	"bttk.dev/agent/pkg/gmailmcp"
+	"github.com/bttk/bttk-mcp/pkg/config"
+	"github.com/bttk/bttk-mcp/pkg/gmail"
+	"github.com/bttk/bttk-mcp/pkg/gmailmcp"
 	"github.com/mark3labs/mcp-go/server"
 )
 

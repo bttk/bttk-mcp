@@ -1,4 +1,4 @@
-module bttk.dev/agent
+module github.com/bttk/bttk-mcp
 
 go 1.25.1
 

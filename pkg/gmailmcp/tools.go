@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"bttk.dev/agent/pkg/gmail"
+	"github.com/bttk/bttk-mcp/pkg/gmail"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
