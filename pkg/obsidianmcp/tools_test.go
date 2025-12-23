@@ -12,26 +12,22 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/mcptest"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // setupMockServer creates a mock Obsidian REST API server
 func setupMockServer(t *testing.T, handler http.HandlerFunc) (*httptest.Server, *obsidian.Client) {
 	ts := httptest.NewServer(handler)
 	client, err := obsidian.NewClient(ts.URL, "test-token", obsidian.WithInsecureTLS())
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
+	require.NoError(t, err, "Failed to create client")
 	return ts, client
 }
 
 func TestGetActiveFile(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			t.Errorf("Expected GET request, got %s", r.Method)
-		}
-		if r.URL.Path != "/active/" {
-			t.Errorf("Expected path /active/, got %s", r.URL.Path)
-		}
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/active/", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintln(w, `{"content": "This is the active file content"}`)
 	}
@@ -43,9 +39,7 @@ func TestGetActiveFile(t *testing.T) {
 		Tool:    GetActiveFileTool(),
 		Handler: GetActiveFileHandler(client),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer srv.Close()
 
 	res, err := srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
@@ -53,36 +47,18 @@ func TestGetActiveFile(t *testing.T) {
 			Name: "obsidian_get_active_file",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if len(res.Content) == 0 {
-		t.Fatal("Expected content, got empty")
-	}
+	assert.NotEmpty(t, res.Content, "Expected content, got empty")
 
-	// Check content via StructuredContent (if available) or raw Content
-	// The implementation returns NewToolResultJSON which populates Content with JSON string usually?
-	// NewToolResultJSON: "func NewToolResultJSON(data interface{}) *CallToolResult"
-	// It serializes data to JSON and puts it in content
-
-	// Assuming the result is JSON text
 	logMsg(t, res)
 }
 
 func TestAppendActiveFile(t *testing.T) {
 	expectedContent := "New line"
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			t.Errorf("Expected POST request, got %s", r.Method)
-		}
-		if r.URL.Path != "/active/" {
-			t.Errorf("Expected path /active/, got %s", r.URL.Path)
-		}
-
-		// Verify body
-		// For brevity, assuming client works correctly if it sends correct request
-
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/active/", r.URL.Path)
 		w.WriteHeader(http.StatusOK)
 	}
 
@@ -93,9 +69,7 @@ func TestAppendActiveFile(t *testing.T) {
 		Tool:    AppendActiveFileTool(),
 		Handler: AppendActiveFileHandler(client),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer srv.Close()
 
 	_, err = srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
@@ -106,25 +80,14 @@ func TestAppendActiveFile(t *testing.T) {
 			},
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestPatchActiveFile(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPatch {
-			t.Errorf("Expected PATCH request, got %s", r.Method)
-		}
-		if r.URL.Path != "/active/" {
-			t.Errorf("Expected path /active/, got %s", r.URL.Path)
-		}
-
-		// Check headers for specialized Obsidian patch headers
-		if r.Header.Get("Operation") != "append" {
-			t.Errorf("Expected Operation append, got %s", r.Header.Get("Operation"))
-		}
-
+		assert.Equal(t, http.MethodPatch, r.Method)
+		assert.Equal(t, "/active/", r.URL.Path)
+		assert.Equal(t, "append", r.Header.Get("Operation"))
 		w.WriteHeader(http.StatusOK)
 	}
 
@@ -135,9 +98,7 @@ func TestPatchActiveFile(t *testing.T) {
 		Tool:    PatchActiveFileTool(),
 		Handler: PatchActiveFileHandler(client),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer srv.Close()
 
 	_, err = srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
@@ -151,22 +112,14 @@ func TestPatchActiveFile(t *testing.T) {
 			},
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestSearchSimple(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			t.Errorf("Expected POST request, got %s", r.Method)
-		}
-		if r.URL.Path != "/search/simple/" {
-			t.Errorf("Expected path /search/simple/, got %s", r.URL.Path)
-		}
-		if r.URL.Query().Get("query") != "test query" {
-			t.Errorf("Expected query 'test query', got %s", r.URL.Query().Get("query"))
-		}
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/search/simple/", r.URL.Path)
+		assert.Equal(t, "test query", r.URL.Query().Get("query"))
 
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintln(w, `[{"filename": "test.md", "score": 1.0}]`)
@@ -179,9 +132,7 @@ func TestSearchSimple(t *testing.T) {
 		Tool:    SearchSimpleTool(),
 		Handler: SearchSimpleHandler(client),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer srv.Close()
 
 	res, err := srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
@@ -192,21 +143,15 @@ func TestSearchSimple(t *testing.T) {
 			},
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	logMsg(t, res)
 }
 
 func TestSearchJSONLogic(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			t.Errorf("Expected POST request, got %s", r.Method)
-		}
-		if r.URL.Path != "/search/" {
-			t.Errorf("Expected path /search/, got %s", r.URL.Path)
-		}
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/search/", r.URL.Path)
 
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintln(w, `[{"filename": "test.md"}]`)
@@ -219,9 +164,7 @@ func TestSearchJSONLogic(t *testing.T) {
 		Tool:    SearchJSONLogicTool(),
 		Handler: SearchJSONLogicHandler(client),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer srv.Close()
 
 	query := `{"or": [{"===": [{"var": "frontmatter.url"}, "http://example.com"]}]}`
@@ -234,19 +177,13 @@ func TestSearchJSONLogic(t *testing.T) {
 			},
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestGetDailyNote(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			t.Errorf("Expected GET request, got %s", r.Method)
-		}
-		if r.URL.Path != "/periodic/daily/" {
-			t.Errorf("Expected path /periodic/daily/, got %s", r.URL.Path)
-		}
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/periodic/daily/", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintln(w, `{"content": "Daily note content"}`)
 	}
@@ -258,9 +195,7 @@ func TestGetDailyNote(t *testing.T) {
 		Tool:    GetDailyNoteTool(),
 		Handler: GetDailyNoteHandler(client),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer srv.Close()
 
 	_, err = srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
@@ -268,21 +203,14 @@ func TestGetDailyNote(t *testing.T) {
 			Name: "obsidian_get_daily_note",
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestGetFile(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			t.Errorf("Expected GET request, got %s", r.Method)
-		}
-		// The client encodes the path. "folder/file.md" -> "folder/file.md" (if no special chars)
-		// Assuming implementation uses path escaping
-		if r.URL.Path != "/vault/folder/file.md" {
-			t.Errorf("Expected path /vault/folder/file.md, got %s", r.URL.Path)
-		}
+		assert.Equal(t, http.MethodGet, r.Method)
+		// Assuming implementation uses path escaping of some sort, or direct concatenation
+		assert.Equal(t, "/vault/folder/file.md", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintln(w, `{"content": "File content"}`)
 	}
@@ -294,9 +222,7 @@ func TestGetFile(t *testing.T) {
 		Tool:    GetFileTool(),
 		Handler: GetFileHandler(client),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer srv.Close()
 
 	_, err = srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
@@ -307,19 +233,13 @@ func TestGetFile(t *testing.T) {
 			},
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestListFiles(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			t.Errorf("Expected GET request, got %s", r.Method)
-		}
-		if r.URL.Path != "/vault/folder" {
-			t.Errorf("Expected path /vault/folder, got %s", r.URL.Path)
-		}
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/vault/folder", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintln(w, `{"files": ["file1.md", "file2.md"]}`)
 	}
@@ -331,9 +251,7 @@ func TestListFiles(t *testing.T) {
 		Tool:    ListFilesTool(),
 		Handler: ListFilesHandler(client),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer srv.Close()
 
 	_, err = srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
@@ -344,19 +262,13 @@ func TestListFiles(t *testing.T) {
 			},
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestCreateOrUpdateFile(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPut {
-			t.Errorf("Expected PUT request, got %s", r.Method)
-		}
-		if r.URL.Path != "/vault/new/file.md" {
-			t.Errorf("Expected path /vault/new/file.md, got %s", r.URL.Path)
-		}
+		assert.Equal(t, http.MethodPut, r.Method)
+		assert.Equal(t, "/vault/new/file.md", r.URL.Path)
 		w.WriteHeader(http.StatusOK)
 	}
 
@@ -367,9 +279,7 @@ func TestCreateOrUpdateFile(t *testing.T) {
 		Tool:    CreateOrUpdateFileTool(),
 		Handler: CreateOrUpdateFileHandler(client),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer srv.Close()
 
 	_, err = srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
@@ -381,19 +291,13 @@ func TestCreateOrUpdateFile(t *testing.T) {
 			},
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func TestOpenFile(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			t.Errorf("Expected POST request, got %s", r.Method)
-		}
-		if r.URL.Path != "/open/my/file.md" {
-			t.Errorf("Expected path /open/my/file.md, got %s", r.URL.Path)
-		}
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/open/my/file.md", r.URL.Path)
 		w.WriteHeader(http.StatusOK)
 	}
 
@@ -404,9 +308,7 @@ func TestOpenFile(t *testing.T) {
 		Tool:    OpenFileTool(),
 		Handler: OpenFileHandler(client),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer srv.Close()
 
 	_, err = srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
@@ -417,15 +319,12 @@ func TestOpenFile(t *testing.T) {
 			},
 		},
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 }
 
 func logMsg(t *testing.T, res *mcp.CallToolResult) {
-	if res.IsError {
-		t.Error("Tool returned error")
-	}
+	assert.False(t, res.IsError, "Tool returned error")
+
 	// For debugging, we can print the content
 	for _, c := range res.Content {
 		if text, ok := c.(mcp.TextContent); ok {
@@ -436,17 +335,9 @@ func logMsg(t *testing.T, res *mcp.CallToolResult) {
 	// Check StructuredContent serialization if present
 	if res.StructuredContent != nil {
 		jsonContent, err := json.Marshal(res.StructuredContent)
-		if err != nil {
-			t.Errorf("Failed to marshal StructuredContent: %v", err)
-		}
-		if string(jsonContent)[0] != '{' {
-			var snippet string
-			if len(jsonContent) < 30 {
-				snippet = string(jsonContent)
-			} else {
-				snippet = string(jsonContent)[:30]
-			}
-			t.Errorf("Expected JSON object, got %s", snippet)
-		}
+		require.NoError(t, err, "Failed to marshal StructuredContent")
+
+		// Verify it matches expected JSON object structure
+		assert.Equal(t, byte('{'), jsonContent[0], "Expected JSON object")
 	}
 }
