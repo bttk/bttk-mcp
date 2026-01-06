@@ -28,6 +28,17 @@ func main() {
 		log.Fatal("Gmail credentials_file and token_file must be specified in config")
 	}
 
+	// Check for commands
+	if len(flag.Args()) > 0 {
+		switch flag.Arg(0) {
+		case "auth":
+			runAuth(cfg)
+			return
+		default:
+			log.Fatalf("Unknown command: %s", flag.Arg(0))
+		}
+	}
+
 	client, err := gmail.NewClient(cfg.Gmail.CredentialsFile, cfg.Gmail.TokenFile)
 	if err != nil {
 		log.Fatalf("Failed to create Gmail client: %v", err)
@@ -40,6 +51,23 @@ func main() {
 	if err := serveStdio(s); err != nil {
 		fmt.Printf("Server error: %v\n", err)
 	}
+}
+
+func runAuth(cfg *config.Config) {
+	fmt.Println("Checking Gmail authentication...")
+	client, err := gmail.NewClient(cfg.Gmail.CredentialsFile, cfg.Gmail.TokenFile)
+	if err != nil {
+		log.Fatalf("Failed to authenticate: %v", err)
+	}
+	fmt.Println("Authentication successful. Verifying API access...")
+
+	// Perform a simple search to verify the token works for API calls
+	_, err = client.SearchMessages("label:INBOX")
+	if err != nil {
+		log.Fatalf("API verification failed: %v", err)
+	}
+
+	fmt.Println("Gmail authentication and verification completed successfully!")
 }
 
 func serveStdio(srv *server.MCPServer) error {

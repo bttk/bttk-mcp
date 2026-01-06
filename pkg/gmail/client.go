@@ -61,6 +61,22 @@ func getClient(config *oauth2.Config, tokenPath string) *http.Client {
 	if err != nil {
 		tok = getTokenFromWeb(config)
 		saveToken(tokenPath, tok)
+	} else {
+		// Token exists, check if it's expired and refresh if necessary
+		src := config.TokenSource(context.Background(), tok)
+		newTok, err := src.Token()
+		if err != nil {
+			// If refresh fails, get a new token
+			fmt.Printf("Unable to refresh token: %v\n", err)
+			tok = getTokenFromWeb(config)
+			saveToken(tokenPath, tok)
+		} else {
+			// If token was refreshed, save it
+			if newTok.AccessToken != tok.AccessToken {
+				saveToken(tokenPath, newTok)
+				tok = newTok
+			}
+		}
 	}
 	return config.Client(context.Background(), tok)
 }
