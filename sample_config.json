@@ -18,5 +18,12 @@
             "create_or_update_file": false,
             "open_file": true
         }
+    },
+    "calendar": {
+        "calendars": [
+            "primary",
+            "example@gmail.com",
+            "abcdefghijkl@group.calendar.google.com"
+        ]
     }
 }

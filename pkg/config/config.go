@@ -20,6 +20,12 @@ type Config struct {
 		CredentialsFile string `json:"credentials_file"`
 		TokenFile       string `json:"token_file"`
 	} `json:"gmail"`
+	Calendar struct {
+		Enabled         bool     `json:"enabled"`
+		CredentialsFile string   `json:"credentials_file"`
+		TokenFile       string   `json:"token_file"`
+		Calendars       []string `json:"calendars"`
+	} `json:"calendar"`
 	MCP struct {
 		Tools map[string]bool `json:"tools"`
 	} `json:"mcp"`
@@ -72,6 +78,21 @@ func Load(path string) (*Config, error) {
 		return nil, errPath
 	}
 	if cfg.Gmail.TokenFile, errPath = resolve(cfg.Gmail.TokenFile); errPath != nil {
+		return nil, errPath
+	}
+
+	// Set defaults for Calendar
+	if cfg.Calendar.CredentialsFile == "" {
+		cfg.Calendar.CredentialsFile = "credentials.json"
+	}
+	if cfg.Calendar.TokenFile == "" {
+		cfg.Calendar.TokenFile = "token.json"
+	}
+
+	if cfg.Calendar.CredentialsFile, errPath = resolve(cfg.Calendar.CredentialsFile); errPath != nil {
+		return nil, errPath
+	}
+	if cfg.Calendar.TokenFile, errPath = resolve(cfg.Calendar.TokenFile); errPath != nil {
 		return nil, errPath
 	}
 

@@ -25,6 +25,17 @@ A custom Go client for the Obsidian Local REST API.
     - `Open`: Open specific files or folders.
 - **Configuration**: Managed via `pkg/obsidian/config`.
 
+### 4. Calendar MCP Server (`cmd/calendarmcp`)
+A separate MCP server for Google Calendar integration.
+- **Server Mode**: Runs the MCP server exposing calendar tools.
+- **CLI Mode**: 
+    - `list`: Lists available calendars.
+    - `auth`: checks authentication status.
+
+### 5. Calendar Client Library (`pkg/calendar`)
+A custom Go client for the Google Calendar API.
+- **Features**: Authentication handling, event listing, event creation.
+
 ## Available MCP Tools
 
 | Tool | Description |
@@ -39,6 +50,9 @@ A custom Go client for the Obsidian Local REST API.
 | `list_files` | Lists files in a specified directory. |
 | `create_or_update_file` | Creates a new file or updates an existing one. |
 | `open_file` | Opens a specific file in the Obsidian UI. |
+| `calendar_list` | Lists available Google Calendars. |
+| `calendar_list_events` | Lists upcoming events from a specific calendar. |
+| `calendar_create_event` | Creates a new event in a specific calendar. |
 
 ### MCP structured content
 
@@ -54,6 +68,11 @@ The project uses a `config.json` file to specify API credentials and enable/disa
         "url": "https://127.0.0.1:27124",
         "cert": "obsidian.crt",
         "apikey": "YOUR_API_KEY"
+        "apikey": "YOUR_API_KEY"
+    },
+    "calendar": {
+        "enabled": true,
+        "calendars": ["primary", "another-calendar-id"]
     },
     "mcp": {
         "tools": {
@@ -81,6 +100,11 @@ go build -o /dev/null ./cmd/obsidianmcp
 ### Running the MCP Server
 ```bash
 go run ./cmd/obsidianmcp -config config.json
+```
+
+### Running the Calendar MCP Server
+```bash
+go run ./cmd/calendarmcp -config config.json
 ```
 
 ### Running the CLI tool

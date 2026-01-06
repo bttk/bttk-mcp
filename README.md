@@ -32,6 +32,22 @@ Provides read-only access to a Gmail account, allowing agents to search and read
 *   `gmail_search`: Search for messages.
 *   `gmail_read`: Read specific message content by ID.
 
+### Calendar MCP Server (`cmd/calendarmcp`)
+
+Provides read **and write** access to a Google Calendar account, allowing agents to list calendars and events.
+
+**Tools:**
+*   `calendar_list`: List available calendars.
+*   `calendar_list_events`: List upcoming events from a specific calendar.
+*   `calendar_create_event`: Create a new event in a specific calendar.
+
+#### Listing Calendars
+
+To list available calendars:
+```bash
+calendarmcp list
+```
+
 ## Getting Started
 
 ### Prerequisites
@@ -39,8 +55,9 @@ Provides read-only access to a Gmail account, allowing agents to search and read
 *   **Go**
 *   **Obsidian**: Install the "Local REST API" plugin and generate an API key.
 *   **Gmail API**: Requires `credentials.json` from Google Cloud Console (OAuth 2.0 Client ID).
+*   **Calendar API**: Requires `credentials.json` from Google Cloud Console (OAuth 2.0 Client ID).
 
-#### Gmail API Setup
+#### Calendar & Gmail API Setup
 
 1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
 2. Create a new project or select an existing one.
@@ -50,12 +67,17 @@ Provides read-only access to a Gmail account, allowing agents to search and read
     *   Configure the consent screen (if required).
     *   Set the application type to "Other".
     *   Download the `credentials.json` file.
+5. Authenticate using:
+    ```bash
+    gmailmcp auth
+    ```
 
 ### Installation
 
 ```bash
 go install github.com/bttk/bttk-mcp/cmd/obsidianmcp@latest
 go install github.com/bttk/bttk-mcp/cmd/gmailmcp@latest
+go install github.com/bttk/bttk-mcp/cmd/calendarmcp@latest
 ```
 
 ### Configuration (`config.json`)
@@ -72,6 +94,15 @@ Tools are configured via a JSON configuration file (default: `~/.config/bttk-mcp
     "gmail": {
         "credentials_file": "./credentials.json",
         "token_file": "./token.json"
+    },
+    "calendar": {
+        "credentials_file": "./credentials.json",
+        "token_file": "./token.json",
+        "calendars": [
+            "primary",
+            "example@gmail.com",
+            "abcdefghijkl@group.calendar.google.com"
+        ]
     },
     "mcp": {
         "tools": {
@@ -103,6 +134,8 @@ Add the built binaries to your MCP client configuration (e.g., Gemini CLI `setti
       "obsidian_search_dql"
       "obsidian_get_file",
       "obsidian_list_files",
+      "calendar_list",
+      "calendar_list_events"
     ]
   },
   "mcpServers": {
@@ -113,6 +146,10 @@ Add the built binaries to your MCP client configuration (e.g., Gemini CLI `setti
     "gmail": {
       "command": "gmailmcp",
       "trust": true
+    },
+    "calendar": {
+      "command": "calendarmcp",
+      "trust": false
     }
   }
 }
