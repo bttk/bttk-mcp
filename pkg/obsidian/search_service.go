@@ -16,7 +16,7 @@ type SearchService struct {
 
 // SearchResult represents a single match in Simple search.
 type SearchResult struct {
-	Filename string `json:"filename"`
+	Filename string  `json:"filename"`
 	Score    float64 `json:"score"`
 	Matches  []struct {
 		Context string `json:"context"`
@@ -56,7 +56,7 @@ type JsonLogicResult struct {
 // JsonLogic performs a structured search using JsonLogic.
 func (s *SearchService) JsonLogic(ctx context.Context, query interface{}) ([]JsonLogicResult, error) {
 	u := s.client.baseURL.ResolveReference(&url.URL{Path: "search/"})
-	
+
 	body, err := json.Marshal(query)
 	if err != nil {
 		return nil, err

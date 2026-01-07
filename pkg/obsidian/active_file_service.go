@@ -70,11 +70,11 @@ func (s *ActiveFileService) Patch(ctx context.Context, op PatchOperation, target
 	if err != nil {
 		return err
 	}
-	
+
 	req.Header.Set("Operation", string(op))
 	req.Header.Set("Target-Type", string(targetType))
 	req.Header.Set("Target", target)
-	// Default to markdown content type for simplicity in this helper, 
+	// Default to markdown content type for simplicity in this helper,
 	// though the API supports JSON for table rows etc.
 	// We might want to make this flexible later.
 	req.Header.Set("Content-Type", "text/markdown")

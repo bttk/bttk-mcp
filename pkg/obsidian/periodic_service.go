@@ -60,7 +60,7 @@ func (s *PeriodicService) PatchCurrent(ctx context.Context, period string, op Pa
 	if err != nil {
 		return err
 	}
-	
+
 	req.Header.Set("Operation", string(op))
 	req.Header.Set("Target-Type", string(targetType))
 	req.Header.Set("Target", target)
@@ -92,5 +92,6 @@ func (s *PeriodicService) Get(ctx context.Context, period string, year, month, d
 	err = s.client.do(req, &content)
 	return content, err
 }
+
 // Note: Additional methods for Append, Patch, Delete for specific dates can be added following similar pattern.
 // Implementing subset for brevity as per requirement to design a package, but full client would have them.
