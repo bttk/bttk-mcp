@@ -38,7 +38,7 @@ func TestE2E_ObsidianMCP(t *testing.T) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			// Return a minimal valid Note JSON
-			w.Write([]byte(`{
+			_, _ = w.Write([]byte(`{
 				"content": "Hello from fake obsidian!",
 				"frontmatter": {},
 				"path": "fake.md",
@@ -126,8 +126,8 @@ func TestE2E_ObsidianMCP(t *testing.T) {
 		// that we can't easily graceful exit without a "shutdown" RPC method or SIGTERM.
 		// server.ServeStdio handles SIGTERM.
 		// Let's replace Kill with Signal.
-		cmd.Process.Signal(os.Interrupt)
-		cmd.Wait() // Wait for file flush
+		_ = cmd.Process.Signal(os.Interrupt)
+		_ = cmd.Wait() // Wait for file flush
 
 		t.Logf("Coverage data written to: %s", coverDir)
 

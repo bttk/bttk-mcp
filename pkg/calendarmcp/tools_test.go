@@ -195,7 +195,7 @@ func TestCalendarListEventsTool_Blocked(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.True(t, res.IsError)
-	assert.Contains(t, res.Content[0].(mcp.TextContent).Text, "access to calendar 'blocked' is not allowed")
+	assert.Contains(t, res.Content[0].(mcp.TextContent).Text, "access to calendar is not allowed by configuration: blocked")
 }
 
 func TestCalendarCreateEventTool(t *testing.T) {

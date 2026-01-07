@@ -3,6 +3,7 @@ package calendarmcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -12,8 +13,12 @@ import (
 	googleCalendar "google.golang.org/api/calendar/v3"
 )
 
+var ErrAccessDenied = errors.New("access to calendar is not allowed by configuration")
+
+const defaultCalendarID = "primary"
+
 // AddTools registers Calendar tools to the MCP server.
-func AddTools(s *server.MCPServer, client calendar.CalendarAPI, config map[string][]string) {
+func AddTools(s *server.MCPServer, client calendar.API, config map[string][]string) {
 	s.AddTool(CalendarListTool(), CalendarListHandler(client, config))
 	s.AddTool(CalendarListEventsTool(), CalendarListEventsHandler(client, config))
 	s.AddTool(CalendarCreateEventTool(), CalendarCreateEventHandler(client, config))
@@ -33,14 +38,22 @@ func isCalendarAllowed(calendarID string, allowedCalendars []string) bool {
 	return false
 }
 
+func checkCalendarAccess(calendarID string, config map[string][]string) error {
+	allowedCalendars := config["calendars"]
+	if !isCalendarAllowed(calendarID, allowedCalendars) {
+		return fmt.Errorf("%w: %s", ErrAccessDenied, calendarID)
+	}
+	return nil
+}
+
 func CalendarListTool() mcp.Tool {
 	return mcp.NewTool("calendar_list",
 		mcp.WithDescription("List available calendars."),
 	)
 }
 
-func CalendarListHandler(client calendar.CalendarAPI, config map[string][]string) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func CalendarListHandler(client calendar.API, config map[string][]string) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		calendarList, err := client.ListCalendars()
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to list calendars: %v", err)), nil
@@ -80,21 +93,20 @@ func CalendarListEventsTool() mcp.Tool {
 	)
 }
 
-func CalendarListEventsHandler(client calendar.CalendarAPI, config map[string][]string) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func CalendarListEventsHandler(client calendar.API, config map[string][]string) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args, ok := request.Params.Arguments.(map[string]interface{})
 		if !ok {
 			return mcp.NewToolResultError("arguments must be a map"), nil
 		}
 
-		calendarID := "primary"
+		calendarID := defaultCalendarID
 		if val, ok := args["calendar"].(string); ok && val != "" {
 			calendarID = val
 		}
 
-		allowedCalendars := config["calendars"]
-		if !isCalendarAllowed(calendarID, allowedCalendars) {
-			return mcp.NewToolResultError(fmt.Sprintf("access to calendar '%s' is not allowed by configuration", calendarID)), nil
+		if err := checkCalendarAccess(calendarID, config); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
 		}
 
 		timeMin := ""
@@ -137,21 +149,43 @@ func CalendarCreateEventTool() mcp.Tool {
 	)
 }
 
-func CalendarCreateEventHandler(client calendar.CalendarAPI, config map[string][]string) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func parseRecurrence(recurrenceArg interface{}) ([]string, error) {
+	if val, ok := recurrenceArg.(string); ok && val != "" {
+		if len(val) > 0 && val[0] == '[' {
+			var recurrence []string
+			if err := json.Unmarshal([]byte(val), &recurrence); err != nil {
+				return nil, err
+			}
+			return recurrence, nil
+		}
+		return []string{val}, nil
+	}
+	if val, ok := recurrenceArg.([]interface{}); ok {
+		var recurrence []string
+		for _, v := range val {
+			if s, ok := v.(string); ok {
+				recurrence = append(recurrence, s)
+			}
+		}
+		return recurrence, nil
+	}
+	return nil, nil
+}
+
+func CalendarCreateEventHandler(client calendar.API, config map[string][]string) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args, ok := request.Params.Arguments.(map[string]interface{})
 		if !ok {
 			return mcp.NewToolResultError("arguments must be a map"), nil
 		}
 
-		calendarID := "primary"
+		calendarID := defaultCalendarID
 		if val, ok := args["calendar"].(string); ok && val != "" {
 			calendarID = val
 		}
 
-		allowedCalendars := config["calendars"]
-		if !isCalendarAllowed(calendarID, allowedCalendars) {
-			return mcp.NewToolResultError(fmt.Sprintf("access to calendar '%s' is not allowed by configuration", calendarID)), nil
+		if err := checkCalendarAccess(calendarID, config); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
 		}
 
 		summary, ok := args["summary"].(string)
@@ -169,28 +203,9 @@ func CalendarCreateEventHandler(client calendar.CalendarAPI, config map[string][
 		description, _ := args["description"].(string)
 		location, _ := args["location"].(string)
 
-		var recurrence []string
-		if val, ok := args["recurrence"].(string); ok && val != "" {
-			// User passes a single string, but API expects array.
-			// mcp-go doesn't support array arguments easily in schema builder yet without raw json,
-			// but we can accept a string and maybe split it or just treat as single rule.
-			// The prompt said "recurrence rules (RRULE)" and RFC5545. Calendar API takes []string.
-			// Or we can try to parse JSON array if user provides it.
-			// For simplicity, let's assume it's a JSON array string if it starts with [, otherwise single rule.
-			if len(val) > 0 && val[0] == '[' {
-				if err := json.Unmarshal([]byte(val), &recurrence); err != nil {
-					return mcp.NewToolResultError(fmt.Sprintf("failed to parse recurrence JSON: %v", err)), nil
-				}
-			} else {
-				recurrence = []string{val}
-			}
-		} else if val, ok := args["recurrence"].([]interface{}); ok {
-			// If mcp-go handles array parsing
-			for _, v := range val {
-				if s, ok := v.(string); ok {
-					recurrence = append(recurrence, s)
-				}
-			}
+		recurrence, err := parseRecurrence(args["recurrence"])
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to parse recurrence: %v", err)), nil
 		}
 
 		// Parse times (basic RFC3339 validation)
@@ -227,7 +242,6 @@ func CalendarCreateEventHandler(client calendar.CalendarAPI, config map[string][
 		}
 
 		return mcp.NewToolResultText(string(jsonBytes)), nil
-
 	}
 }
 
@@ -245,21 +259,20 @@ func CalendarPatchEventTool() mcp.Tool {
 	)
 }
 
-func CalendarPatchEventHandler(client calendar.CalendarAPI, config map[string][]string) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func CalendarPatchEventHandler(client calendar.API, config map[string][]string) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args, ok := request.Params.Arguments.(map[string]interface{})
 		if !ok {
 			return mcp.NewToolResultError("arguments must be a map"), nil
 		}
 
-		calendarID := "primary"
+		calendarID := defaultCalendarID
 		if val, ok := args["calendar"].(string); ok && val != "" {
 			calendarID = val
 		}
 
-		allowedCalendars := config["calendars"]
-		if !isCalendarAllowed(calendarID, allowedCalendars) {
-			return mcp.NewToolResultError(fmt.Sprintf("access to calendar '%s' is not allowed by configuration", calendarID)), nil
+		if err := checkCalendarAccess(calendarID, config); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
 		}
 
 		eventID, ok := args["eventId"].(string)
@@ -296,23 +309,11 @@ func CalendarPatchEventHandler(client calendar.CalendarAPI, config map[string][]
 		}
 
 		// Handle Recurrence
-		if val, ok := args["recurrence"].(string); ok && val != "" {
-			var recurrence []string
-			if len(val) > 0 && val[0] == '[' {
-				if err := json.Unmarshal([]byte(val), &recurrence); err != nil {
-					return mcp.NewToolResultError(fmt.Sprintf("failed to parse recurrence JSON: %v", err)), nil
-				}
-			} else {
-				recurrence = []string{val}
-			}
-			event.Recurrence = recurrence
-		} else if val, ok := args["recurrence"].([]interface{}); ok {
-			var recurrence []string
-			for _, v := range val {
-				if s, ok := v.(string); ok {
-					recurrence = append(recurrence, s)
-				}
-			}
+		recurrence, err := parseRecurrence(args["recurrence"])
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to parse recurrence: %v", err)), nil
+		}
+		if recurrence != nil {
 			event.Recurrence = recurrence
 		}
 
@@ -338,21 +339,20 @@ func CalendarDeleteEventTool() mcp.Tool {
 	)
 }
 
-func CalendarDeleteEventHandler(client calendar.CalendarAPI, config map[string][]string) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func CalendarDeleteEventHandler(client calendar.API, config map[string][]string) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args, ok := request.Params.Arguments.(map[string]interface{})
 		if !ok {
 			return mcp.NewToolResultError("arguments must be a map"), nil
 		}
 
-		calendarID := "primary"
+		calendarID := defaultCalendarID
 		if val, ok := args["calendar"].(string); ok && val != "" {
 			calendarID = val
 		}
 
-		allowedCalendars := config["calendars"]
-		if !isCalendarAllowed(calendarID, allowedCalendars) {
-			return mcp.NewToolResultError(fmt.Sprintf("access to calendar '%s' is not allowed by configuration", calendarID)), nil
+		if err := checkCalendarAccess(calendarID, config); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
 		}
 
 		eventID, ok := args["eventId"].(string)

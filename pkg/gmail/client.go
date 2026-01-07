@@ -3,12 +3,14 @@ package gmail
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"runtime"
+	"time"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -16,14 +18,27 @@ import (
 	"google.golang.org/api/option"
 )
 
+var (
+	// ErrReadSecret is returned when the client secret file cannot be read.
+	ErrReadSecret = errors.New("unable to read client secret file")
+	// ErrParseConfig is returned when the client secret file cannot be parsed.
+	ErrParseConfig = errors.New("unable to parse client secret file to config")
+	// ErrClientRetrieve is returned when the Gmail client cannot be retrieved.
+	ErrClientRetrieve = errors.New("unable to retrieve Gmail client")
+	// ErrListMessages is returned when the messages cannot be listed.
+	ErrListMessages = errors.New("unable to list messages")
+	// ErrGetMessage is returned when a message cannot be retrieved.
+	ErrGetMessage = errors.New("unable to get message")
+)
+
 // Client is a wrapper around the Gmail API service.
 type Client struct {
 	Service *gmail.Service
 }
 
-// GmailAPI defines the interface for interacting with Gmail.
+// API defines the interface for interacting with Gmail.
 // This allows for mocking in tests.
-type GmailAPI interface {
+type API interface {
 	SearchMessages(query string) ([]*gmail.Message, error)
 	GetMessage(id string) (*gmail.Message, error)
 }
@@ -34,19 +49,19 @@ func NewClient(credentialsPath, tokenPath string) (*Client, error) {
 	ctx := context.Background()
 	b, err := os.ReadFile(credentialsPath)
 	if err != nil {
-		return nil, fmt.Errorf("unable to read client secret file: %v", err)
+		return nil, fmt.Errorf("%w: %w", ErrReadSecret, err)
 	}
 
 	// If modifying these scopes, delete your previously saved token.json.
 	config, err := google.ConfigFromJSON(b, gmail.GmailReadonlyScope)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse client secret file to config: %v", err)
+		return nil, fmt.Errorf("%w: %w", ErrParseConfig, err)
 	}
 	client := getClient(config, tokenPath)
 
 	srv, err := gmail.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
-		return nil, fmt.Errorf("unable to retrieve Gmail client: %v", err)
+		return nil, fmt.Errorf("%w: %w", ErrClientRetrieve, err)
 	}
 
 	return &Client{Service: srv}, nil
@@ -61,22 +76,24 @@ func getClient(config *oauth2.Config, tokenPath string) *http.Client {
 	if err != nil {
 		tok = getTokenFromWeb(config)
 		saveToken(tokenPath, tok)
-	} else {
-		// Token exists, check if it's expired and refresh if necessary
-		src := config.TokenSource(context.Background(), tok)
-		newTok, err := src.Token()
-		if err != nil {
-			// If refresh fails, get a new token
-			fmt.Printf("Unable to refresh token: %v\n", err)
-			tok = getTokenFromWeb(config)
-			saveToken(tokenPath, tok)
-		} else {
-			// If token was refreshed, save it
-			if newTok.AccessToken != tok.AccessToken {
-				saveToken(tokenPath, newTok)
-				tok = newTok
-			}
-		}
+		return config.Client(context.Background(), tok)
+	}
+
+	// Token exists, check if it's expired and refresh if necessary
+	src := config.TokenSource(context.Background(), tok)
+	newTok, err := src.Token()
+	if err != nil {
+		// If refresh fails, get a new token
+		fmt.Printf("Unable to refresh token: %v\n", err)
+		tok = getTokenFromWeb(config)
+		saveToken(tokenPath, tok)
+		return config.Client(context.Background(), tok)
+	}
+
+	// If token was refreshed, save it
+	if newTok.AccessToken != tok.AccessToken {
+		saveToken(tokenPath, newTok)
+		tok = newTok
 	}
 	return config.Client(context.Background(), tok)
 }
@@ -100,16 +117,21 @@ func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			code := r.URL.Query().Get("code")
 			if code != "" {
-				w.Write([]byte("Authentication successful! You can check the terminal now."))
+				_, _ = w.Write([]byte("Authentication successful! You can check the terminal now."))
 				codeCh <- code
 			} else {
-				w.Write([]byte("Authentication failed. No code found."))
+				_, _ = w.Write([]byte("Authentication failed. No code found."))
 				codeCh <- ""
 			}
 		}),
+		ReadHeaderTimeout: 10 * time.Second, //nolint:mnd
 	}
 
-	go server.Serve(l)
+	go func() {
+		if err := server.Serve(l); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			fmt.Printf("HTTP server error: %v\n", err)
+		}
+	}()
 
 	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
 	fmt.Printf("Opening browser to visit: \n%v\n", authURL)
@@ -189,7 +211,9 @@ func saveToken(path string, token *oauth2.Token) {
 		fmt.Printf("Unable to cache oauth token: %v", err)
 	}
 	defer f.Close()
-	json.NewEncoder(f).Encode(token)
+	if err := json.NewEncoder(f).Encode(token); err != nil {
+		fmt.Printf("Unable to encode token: %v\n", err)
+	}
 }
 
 // SearchMessages searches for messages matching the query.
@@ -198,7 +222,7 @@ func (c *Client) SearchMessages(query string) ([]*gmail.Message, error) {
 	user := "me"
 	r, err := c.Service.Users.Messages.List(user).Q(query).Do()
 	if err != nil {
-		return nil, fmt.Errorf("unable to list messages: %v", err)
+		return nil, fmt.Errorf("%w: %w", ErrListMessages, err)
 	}
 	return r.Messages, nil
 }
@@ -208,7 +232,7 @@ func (c *Client) GetMessage(id string) (*gmail.Message, error) {
 	user := "me"
 	msg, err := c.Service.Users.Messages.Get(user, id).Format("full").Do()
 	if err != nil {
-		return nil, fmt.Errorf("unable to get message: %v", err)
+		return nil, fmt.Errorf("%w: %w", ErrGetMessage, err)
 	}
 	return msg, nil
 }

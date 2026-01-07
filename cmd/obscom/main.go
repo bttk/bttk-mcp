@@ -19,7 +19,7 @@ func main() {
 
 	fs := flag.NewFlagSet("obscom", flag.ExitOnError)
 	configPath := fs.String("config", "", "path to the configuration file (default: ~/.config/bttk-mcp/config.json)")
-	fs.Parse(os.Args[3:])
+	_ = fs.Parse(os.Args[3:])
 
 	// Initialize zerolog
 	// log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})

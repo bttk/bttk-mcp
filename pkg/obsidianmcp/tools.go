@@ -29,7 +29,7 @@ func GetActiveFileTool() mcp.Tool {
 
 // GetActiveFileHandler returns the tool handler
 func GetActiveFileHandler(client *obsidian.Client) server.ToolHandlerFunc {
-	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		content, err := client.ActiveFile.GetNote(ctx)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to get active file: %v", err)), nil
@@ -172,7 +172,7 @@ func SearchJSONLogicHandler(client *obsidian.Client) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(fmt.Sprintf("invalid JSON logic query: %v", err)), nil
 		}
 
-		results, err := client.Search.JsonLogic(ctx, query)
+		results, err := client.Search.JSONLogic(ctx, query)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to search: %v", err)), nil
 		}
@@ -226,7 +226,7 @@ func GetDailyNoteTool() mcp.Tool {
 
 // GetDailyNoteHandler returns the tool handler
 func GetDailyNoteHandler(client *obsidian.Client) server.ToolHandlerFunc {
-	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		content, err := client.Periodic.GetCurrentNote(ctx, "daily")
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to get daily note: %v", err)), nil

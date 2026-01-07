@@ -24,6 +24,27 @@ func setupMockServer(t *testing.T, handler http.HandlerFunc) (*httptest.Server, 
 	return ts, client
 }
 
+func testTool(t *testing.T, tool mcp.Tool, createHandler func(*obsidian.Client) server.ToolHandlerFunc, toolName string, args map[string]interface{}, mockHandler http.HandlerFunc) *mcp.CallToolResult {
+	ts, client := setupMockServer(t, mockHandler)
+	defer ts.Close()
+
+	srv, err := mcptest.NewServer(t, server.ServerTool{
+		Tool:    tool,
+		Handler: createHandler(client),
+	})
+	require.NoError(t, err)
+	defer srv.Close()
+
+	res, err := srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Name:      toolName,
+			Arguments: args,
+		},
+	})
+	require.NoError(t, err)
+	return res
+}
+
 func TestGetActiveFile(t *testing.T) {
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
@@ -32,25 +53,8 @@ func TestGetActiveFile(t *testing.T) {
 		fmt.Fprintln(w, `{"content": "This is the active file content"}`)
 	}
 
-	ts, client := setupMockServer(t, handler)
-	defer ts.Close()
-
-	srv, err := mcptest.NewServer(t, server.ServerTool{
-		Tool:    GetActiveFileTool(),
-		Handler: GetActiveFileHandler(client),
-	})
-	require.NoError(t, err)
-	defer srv.Close()
-
-	res, err := srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
-		Params: mcp.CallToolParams{
-			Name: "obsidian_get_active_file",
-		},
-	})
-	require.NoError(t, err)
-
+	res := testTool(t, GetActiveFileTool(), GetActiveFileHandler, "obsidian_get_active_file", nil, handler)
 	assert.NotEmpty(t, res.Content, "Expected content, got empty")
-
 	logMsg(t, res)
 }
 
@@ -62,25 +66,9 @@ func TestAppendActiveFile(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}
 
-	ts, client := setupMockServer(t, handler)
-	defer ts.Close()
-
-	srv, err := mcptest.NewServer(t, server.ServerTool{
-		Tool:    AppendActiveFileTool(),
-		Handler: AppendActiveFileHandler(client),
-	})
-	require.NoError(t, err)
-	defer srv.Close()
-
-	_, err = srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
-		Params: mcp.CallToolParams{
-			Name: "obsidian_append_active_file",
-			Arguments: map[string]interface{}{
-				"content": expectedContent,
-			},
-		},
-	})
-	require.NoError(t, err)
+	testTool(t, AppendActiveFileTool(), AppendActiveFileHandler, "obsidian_append_active_file", map[string]interface{}{
+		"content": expectedContent,
+	}, handler)
 }
 
 func TestPatchActiveFile(t *testing.T) {
@@ -91,28 +79,12 @@ func TestPatchActiveFile(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}
 
-	ts, client := setupMockServer(t, handler)
-	defer ts.Close()
-
-	srv, err := mcptest.NewServer(t, server.ServerTool{
-		Tool:    PatchActiveFileTool(),
-		Handler: PatchActiveFileHandler(client),
-	})
-	require.NoError(t, err)
-	defer srv.Close()
-
-	_, err = srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
-		Params: mcp.CallToolParams{
-			Name: "obsidian_patch_active_file",
-			Arguments: map[string]interface{}{
-				"operation":   "append",
-				"target_type": "heading",
-				"target":      "MyHeading",
-				"content":     "New Content",
-			},
-		},
-	})
-	require.NoError(t, err)
+	testTool(t, PatchActiveFileTool(), PatchActiveFileHandler, "obsidian_patch_active_file", map[string]interface{}{
+		"operation":   "append",
+		"target_type": "heading",
+		"target":      "MyHeading",
+		"content":     "New Content",
+	}, handler)
 }
 
 func TestSearchSimple(t *testing.T) {
@@ -125,26 +97,9 @@ func TestSearchSimple(t *testing.T) {
 		fmt.Fprintln(w, `[{"filename": "test.md", "score": 1.0}]`)
 	}
 
-	ts, client := setupMockServer(t, handler)
-	defer ts.Close()
-
-	srv, err := mcptest.NewServer(t, server.ServerTool{
-		Tool:    SearchSimpleTool(),
-		Handler: SearchSimpleHandler(client),
-	})
-	require.NoError(t, err)
-	defer srv.Close()
-
-	res, err := srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
-		Params: mcp.CallToolParams{
-			Name: "obsidian_search_simple",
-			Arguments: map[string]interface{}{
-				"query": "test query",
-			},
-		},
-	})
-	require.NoError(t, err)
-
+	res := testTool(t, SearchSimpleTool(), SearchSimpleHandler, "obsidian_search_simple", map[string]interface{}{
+		"query": "test query",
+	}, handler)
 	logMsg(t, res)
 }
 
@@ -157,27 +112,11 @@ func TestSearchJSONLogic(t *testing.T) {
 		fmt.Fprintln(w, `[{"filename": "test.md"}]`)
 	}
 
-	ts, client := setupMockServer(t, handler)
-	defer ts.Close()
-
-	srv, err := mcptest.NewServer(t, server.ServerTool{
-		Tool:    SearchJSONLogicTool(),
-		Handler: SearchJSONLogicHandler(client),
-	})
-	require.NoError(t, err)
-	defer srv.Close()
-
 	query := `{"or": [{"===": [{"var": "frontmatter.url"}, "http://example.com"]}]}`
 
-	_, err = srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
-		Params: mcp.CallToolParams{
-			Name: "obsidian_search_json_logic",
-			Arguments: map[string]interface{}{
-				"query": query,
-			},
-		},
-	})
-	require.NoError(t, err)
+	testTool(t, SearchJSONLogicTool(), SearchJSONLogicHandler, "obsidian_search_json_logic", map[string]interface{}{
+		"query": query,
+	}, handler)
 }
 
 func TestGetDailyNote(t *testing.T) {
@@ -188,22 +127,7 @@ func TestGetDailyNote(t *testing.T) {
 		fmt.Fprintln(w, `{"content": "Daily note content"}`)
 	}
 
-	ts, client := setupMockServer(t, handler)
-	defer ts.Close()
-
-	srv, err := mcptest.NewServer(t, server.ServerTool{
-		Tool:    GetDailyNoteTool(),
-		Handler: GetDailyNoteHandler(client),
-	})
-	require.NoError(t, err)
-	defer srv.Close()
-
-	_, err = srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
-		Params: mcp.CallToolParams{
-			Name: "obsidian_get_daily_note",
-		},
-	})
-	require.NoError(t, err)
+	testTool(t, GetDailyNoteTool(), GetDailyNoteHandler, "obsidian_get_daily_note", nil, handler)
 }
 
 func TestGetFile(t *testing.T) {
@@ -215,25 +139,9 @@ func TestGetFile(t *testing.T) {
 		fmt.Fprintln(w, `{"content": "File content"}`)
 	}
 
-	ts, client := setupMockServer(t, handler)
-	defer ts.Close()
-
-	srv, err := mcptest.NewServer(t, server.ServerTool{
-		Tool:    GetFileTool(),
-		Handler: GetFileHandler(client),
-	})
-	require.NoError(t, err)
-	defer srv.Close()
-
-	_, err = srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
-		Params: mcp.CallToolParams{
-			Name: "obsidian_get_file",
-			Arguments: map[string]interface{}{
-				"path": "folder/file.md",
-			},
-		},
-	})
-	require.NoError(t, err)
+	testTool(t, GetFileTool(), GetFileHandler, "obsidian_get_file", map[string]interface{}{
+		"path": "folder/file.md",
+	}, handler)
 }
 
 func TestListFiles(t *testing.T) {
@@ -244,25 +152,9 @@ func TestListFiles(t *testing.T) {
 		fmt.Fprintln(w, `{"files": ["file1.md", "file2.md"]}`)
 	}
 
-	ts, client := setupMockServer(t, handler)
-	defer ts.Close()
-
-	srv, err := mcptest.NewServer(t, server.ServerTool{
-		Tool:    ListFilesTool(),
-		Handler: ListFilesHandler(client),
-	})
-	require.NoError(t, err)
-	defer srv.Close()
-
-	_, err = srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
-		Params: mcp.CallToolParams{
-			Name: "obsidian_list_files",
-			Arguments: map[string]interface{}{
-				"path": "folder",
-			},
-		},
-	})
-	require.NoError(t, err)
+	testTool(t, ListFilesTool(), ListFilesHandler, "obsidian_list_files", map[string]interface{}{
+		"path": "folder",
+	}, handler)
 }
 
 func TestCreateOrUpdateFile(t *testing.T) {
@@ -272,26 +164,10 @@ func TestCreateOrUpdateFile(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}
 
-	ts, client := setupMockServer(t, handler)
-	defer ts.Close()
-
-	srv, err := mcptest.NewServer(t, server.ServerTool{
-		Tool:    CreateOrUpdateFileTool(),
-		Handler: CreateOrUpdateFileHandler(client),
-	})
-	require.NoError(t, err)
-	defer srv.Close()
-
-	_, err = srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
-		Params: mcp.CallToolParams{
-			Name: "obsidian_create_or_update_file",
-			Arguments: map[string]interface{}{
-				"path":    "new/file.md",
-				"content": "New content",
-			},
-		},
-	})
-	require.NoError(t, err)
+	testTool(t, CreateOrUpdateFileTool(), CreateOrUpdateFileHandler, "obsidian_create_or_update_file", map[string]interface{}{
+		"path":    "new/file.md",
+		"content": "New content",
+	}, handler)
 }
 
 func TestOpenFile(t *testing.T) {
@@ -301,25 +177,9 @@ func TestOpenFile(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}
 
-	ts, client := setupMockServer(t, handler)
-	defer ts.Close()
-
-	srv, err := mcptest.NewServer(t, server.ServerTool{
-		Tool:    OpenFileTool(),
-		Handler: OpenFileHandler(client),
-	})
-	require.NoError(t, err)
-	defer srv.Close()
-
-	_, err = srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
-		Params: mcp.CallToolParams{
-			Name: "obsidian_open_file",
-			Arguments: map[string]interface{}{
-				"path": "my/file.md",
-			},
-		},
-	})
-	require.NoError(t, err)
+	testTool(t, OpenFileTool(), OpenFileHandler, "obsidian_open_file", map[string]interface{}{
+		"path": "my/file.md",
+	}, handler)
 }
 
 func logMsg(t *testing.T, res *mcp.CallToolResult) {

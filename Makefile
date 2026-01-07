@@ -18,9 +18,6 @@ tidy: ## Cleans up go.mod and go.sum
 fmt: ## Formats all code with go fmt
 	@go fmt ./...
 
-run: fmt ## Run the app
-	@go run ./cmd/bttk-mcp/main.go
-
 test-build: ## Tests whether the code compiles
 	@go build -o /dev/null ./...
 

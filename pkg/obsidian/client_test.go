@@ -226,7 +226,7 @@ func TestClient_Search_JsonLogic(t *testing.T) {
 	require.NoError(t, err)
 
 	query := map[string]interface{}{"var": "test"}
-	results, err := client.Search.JsonLogic(context.Background(), query)
+	results, err := client.Search.JSONLogic(context.Background(), query)
 	require.NoError(t, err)
 	require.Len(t, results, 1)
 	assert.Equal(t, "a.md", results[0].Filename)

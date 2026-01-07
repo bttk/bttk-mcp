@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,6 +13,8 @@ import (
 	"strings"
 	"time"
 )
+
+var ErrAPI = errors.New("API error")
 
 // Client is the main entry point for the Obsidian Local REST API client.
 type Client struct {
@@ -45,7 +48,7 @@ func NewClient(baseURL, token string, opts ...Option) (*Client, error) {
 		baseURL: u,
 		token:   token,
 		http: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: 10 * time.Second, //nolint:mnd
 		},
 	}
 
@@ -71,11 +74,11 @@ func WithInsecureTLS() Option {
 	return func(c *Client) {
 		if c.http.Transport == nil {
 			c.http.Transport = &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+				TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // Intentional for local dev
 			}
 		} else if t, ok := c.http.Transport.(*http.Transport); ok {
 			if t.TLSClientConfig == nil {
-				t.TLSClientConfig = &tls.Config{}
+				t.TLSClientConfig = &tls.Config{} //nolint:gosec // Intentional
 			}
 			t.TLSClientConfig.InsecureSkipVerify = true
 		}
@@ -92,16 +95,11 @@ func WithCertificate(path string) Option {
 		caCertPool := x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM(caCert)
 
-		tlsConfig := &tls.Config{
-			RootCAs: caCertPool,
-		}
-
 		if c.http.Transport == nil {
-			c.http.Transport = &http.Transport{
-				TLSClientConfig: tlsConfig,
-			}
-		} else if t, ok := c.http.Transport.(*http.Transport); ok {
-			t.TLSClientConfig = tlsConfig
+			c.http.Transport = http.DefaultTransport.(*http.Transport).Clone()
+		}
+		if t, ok := c.http.Transport.(*http.Transport); ok {
+			t.TLSClientConfig.RootCAs = caCertPool
 		}
 	}
 }
@@ -123,14 +121,14 @@ func (c *Client) do(req *http.Request, v interface{}) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 400 {
+	if resp.StatusCode >= http.StatusBadRequest {
 		var errResp ErrorResponse
 		if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil {
 			return &errResp
 		}
 
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("API error: status code %d, body: %s", resp.StatusCode, string(bodyBytes))
+		return fmt.Errorf("%w: status code %d, body: %s", ErrAPI, resp.StatusCode, string(bodyBytes))
 	}
 
 	if v != nil {

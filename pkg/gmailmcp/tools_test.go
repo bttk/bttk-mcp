@@ -2,7 +2,7 @@ package gmailmcp
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/api/gmail/v1"
 )
+
+var errMessageNotFound = errors.New("message not found")
 
 // MockGmailClient is a mock implementation of pkg_gmail.GmailAPI
 type MockGmailClient struct {
@@ -95,7 +97,7 @@ func TestGmailRead(t *testing.T) {
 					},
 				}, nil
 			}
-			return nil, fmt.Errorf("message not found")
+			return nil, errMessageNotFound
 		},
 	}
 

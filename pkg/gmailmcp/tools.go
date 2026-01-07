@@ -10,7 +10,7 @@ import (
 )
 
 // AddTools registers Gmail tools to the MCP server.
-func AddTools(s *server.MCPServer, client gmail.GmailAPI) {
+func AddTools(s *server.MCPServer, client gmail.API) {
 	s.AddTool(GmailSearchTool(), GmailSearchHandler(client))
 	s.AddTool(GmailReadTool(), GmailReadHandler(client))
 }
@@ -22,8 +22,8 @@ func GmailSearchTool() mcp.Tool {
 	)
 }
 
-func GmailSearchHandler(client gmail.GmailAPI) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func GmailSearchHandler(client gmail.API) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args, ok := request.Params.Arguments.(map[string]interface{})
 		if !ok {
 			return mcp.NewToolResultError("arguments must be a map"), nil
@@ -60,8 +60,8 @@ func GmailReadTool() mcp.Tool {
 	)
 }
 
-func GmailReadHandler(client gmail.GmailAPI) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func GmailReadHandler(client gmail.API) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args, ok := request.Params.Arguments.(map[string]interface{})
 		if !ok {
 			return mcp.NewToolResultError("arguments must be a map"), nil

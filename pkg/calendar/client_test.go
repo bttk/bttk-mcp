@@ -21,20 +21,19 @@ func setupTestServer(t *testing.T) (*httptest.Server, *Client) {
 			w.Header().Set("Content-Type", "application/json")
 			fmt.Fprintln(w, `{"items": [{"id": "cal1", "summary": "Calendar 1"}]}`)
 		case "/calendars/primary/events":
-			if r.Method == "POST" {
-				// Create Event
-				w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Content-Type", "application/json")
+			switch r.Method {
+			case http.MethodPost:
 				fmt.Fprintln(w, `{"id": "evt1", "summary": "New Event", "htmlLink": "http://link"}`)
-			} else {
-				// List Events
-				w.Header().Set("Content-Type", "application/json")
+			default:
 				fmt.Fprintln(w, `{"items": [{"id": "evt1", "summary": "Event 1"}]}`)
 			}
 		case "/calendars/primary/events/evt1":
-			if r.Method == "PATCH" {
+			switch r.Method {
+			case http.MethodPatch:
 				w.Header().Set("Content-Type", "application/json")
 				fmt.Fprintln(w, `{"id": "evt1", "summary": "Patched Event", "htmlLink": "http://link"}`)
-			} else if r.Method == "DELETE" {
+			case http.MethodDelete:
 				w.WriteHeader(http.StatusNoContent)
 			}
 		default:

@@ -94,7 +94,13 @@ The project uses a `config.json` file to specify API credentials and enable/disa
 
 ### Building
 ```bash
-go build -o /dev/null ./cmd/obsidianmcp
+make build
+```
+
+### Testing & Linting
+```bash
+make test
+make lint
 ```
 
 ### Running the MCP Server

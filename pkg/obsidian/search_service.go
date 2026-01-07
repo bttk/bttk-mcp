@@ -47,14 +47,14 @@ func (s *SearchService) Simple(ctx context.Context, query string, contextLength 
 	return results, err
 }
 
-// JsonLogicResult represents a result from a JsonLogic or Dataview search.
-type JsonLogicResult struct {
+// JSONLogicResult represents a result from a JsonLogic or Dataview search.
+type JSONLogicResult struct {
 	Filename string      `json:"filename"`
 	Result   interface{} `json:"result"`
 }
 
-// JsonLogic performs a structured search using JsonLogic.
-func (s *SearchService) JsonLogic(ctx context.Context, query interface{}) ([]JsonLogicResult, error) {
+// JSONLogic performs a structured search using JsonLogic.
+func (s *SearchService) JSONLogic(ctx context.Context, query interface{}) ([]JSONLogicResult, error) {
 	u := s.client.baseURL.ResolveReference(&url.URL{Path: "search/"})
 
 	body, err := json.Marshal(query)
@@ -68,13 +68,13 @@ func (s *SearchService) JsonLogic(ctx context.Context, query interface{}) ([]Jso
 	}
 	req.Header.Set("Content-Type", "application/vnd.olrapi.jsonlogic+json")
 
-	var results []JsonLogicResult
+	var results []JSONLogicResult
 	err = s.client.do(req, &results)
 	return results, err
 }
 
 // Dataview performs a search using Dataview Query Language (DQL).
-func (s *SearchService) Dataview(ctx context.Context, dql string) ([]JsonLogicResult, error) {
+func (s *SearchService) Dataview(ctx context.Context, dql string) ([]JSONLogicResult, error) {
 	u := s.client.baseURL.ResolveReference(&url.URL{Path: "search/"})
 	req, err := http.NewRequestWithContext(ctx, "POST", u.String(), bytes.NewReader([]byte(dql)))
 	if err != nil {
@@ -82,7 +82,7 @@ func (s *SearchService) Dataview(ctx context.Context, dql string) ([]JsonLogicRe
 	}
 	req.Header.Set("Content-Type", "application/vnd.olrapi.dataview.dql+txt")
 
-	var results []JsonLogicResult
+	var results []JSONLogicResult
 	err = s.client.do(req, &results)
 	return results, err
 }

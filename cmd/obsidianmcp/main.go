@@ -108,10 +108,11 @@ type loggingWriter struct {
 }
 
 func (lw *loggingWriter) Write(p []byte) (n int, err error) {
-	if len(p) < 50 {
+	const maxLogLen = 50
+	if len(p) < maxLogLen {
 		log.Info().Msgf("OUT: %q", p)
 	} else {
-		log.Info().Msgf("OUT: %q...", p[:50])
+		log.Info().Msgf("OUT: %q...", p[:maxLogLen])
 	}
 	return lw.w.Write(p)
 }
