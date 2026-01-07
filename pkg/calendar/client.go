@@ -28,6 +28,8 @@ type CalendarAPI interface {
 	ListCalendars() ([]*calendar.CalendarListEntry, error)
 	ListEvents(calendarID string, timeMin, timeMax string, maxResults int64) ([]*calendar.Event, error)
 	CreateEvent(calendarID string, event *calendar.Event) (*calendar.Event, error)
+	PatchEvent(calendarID, eventID string, event *calendar.Event) (*calendar.Event, error)
+	DeleteEvent(calendarID, eventID string) error
 }
 
 // NewClient creates a new Calendar client.
@@ -92,6 +94,24 @@ func (c *Client) CreateEvent(calendarID string, event *calendar.Event) (*calenda
 		return nil, fmt.Errorf("unable to create event: %v", err)
 	}
 	return createdEvent, nil
+}
+
+// PatchEvent patches an existing event in the specified calendar.
+func (c *Client) PatchEvent(calendarID, eventID string, event *calendar.Event) (*calendar.Event, error) {
+	patchedEvent, err := c.Service.Events.Patch(calendarID, eventID, event).Do()
+	if err != nil {
+		return nil, fmt.Errorf("unable to patch event: %v", err)
+	}
+	return patchedEvent, nil
+}
+
+// DeleteEvent deletes an event from the specified calendar.
+func (c *Client) DeleteEvent(calendarID, eventID string) error {
+	err := c.Service.Events.Delete(calendarID, eventID).Do()
+	if err != nil {
+		return fmt.Errorf("unable to delete event: %v", err)
+	}
+	return nil
 }
 
 // Retrieve a token, saves the token, then returns the generated client.

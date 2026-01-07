@@ -30,6 +30,13 @@ func setupTestServer(t *testing.T) (*httptest.Server, *Client) {
 				w.Header().Set("Content-Type", "application/json")
 				fmt.Fprintln(w, `{"items": [{"id": "evt1", "summary": "Event 1"}]}`)
 			}
+		case "/calendars/primary/events/evt1":
+			if r.Method == "PATCH" {
+				w.Header().Set("Content-Type", "application/json")
+				fmt.Fprintln(w, `{"id": "evt1", "summary": "Patched Event", "htmlLink": "http://link"}`)
+			} else if r.Method == "DELETE" {
+				w.WriteHeader(http.StatusNoContent)
+			}
 		default:
 			http.Error(w, "Not Found", http.StatusNotFound)
 		}
@@ -73,6 +80,26 @@ func TestCreateEvent(t *testing.T) {
 	created, err := client.CreateEvent("primary", event)
 	require.NoError(t, err)
 	assert.Equal(t, "evt1", created.Id)
+	assert.Equal(t, "evt1", created.Id)
+}
+
+func TestPatchEvent(t *testing.T) {
+	ts, client := setupTestServer(t)
+	defer ts.Close()
+
+	event := &calendar.Event{Summary: "Patched Event"}
+	patched, err := client.PatchEvent("primary", "evt1", event)
+	require.NoError(t, err)
+	assert.Equal(t, "evt1", patched.Id)
+	assert.Equal(t, "Patched Event", patched.Summary)
+}
+
+func TestDeleteEvent(t *testing.T) {
+	ts, client := setupTestServer(t)
+	defer ts.Close()
+
+	err := client.DeleteEvent("primary", "evt1")
+	require.NoError(t, err)
 }
 
 func TestListEvents_Defaults(t *testing.T) {

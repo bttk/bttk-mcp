@@ -17,6 +17,8 @@ func AddTools(s *server.MCPServer, client calendar.CalendarAPI, config map[strin
 	s.AddTool(CalendarListTool(), CalendarListHandler(client, config))
 	s.AddTool(CalendarListEventsTool(), CalendarListEventsHandler(client, config))
 	s.AddTool(CalendarCreateEventTool(), CalendarCreateEventHandler(client, config))
+	s.AddTool(CalendarPatchEventTool(), CalendarPatchEventHandler(client, config))
+	s.AddTool(CalendarDeleteEventTool(), CalendarDeleteEventHandler(client, config))
 }
 
 func isCalendarAllowed(calendarID string, allowedCalendars []string) bool {
@@ -131,6 +133,7 @@ func CalendarCreateEventTool() mcp.Tool {
 		mcp.WithString("endTime", mcp.Required(), mcp.Description("End time of the event (RFC3339 format).")),
 		mcp.WithString("description", mcp.Description("Description of the event.")),
 		mcp.WithString("location", mcp.Description("Location of the event.")),
+		mcp.WithString("recurrence", mcp.Description("Recurrence rules (RRULE) for the event (e.g. ['RRULE:FREQ=DAILY;COUNT=2']).")),
 	)
 }
 
@@ -166,6 +169,30 @@ func CalendarCreateEventHandler(client calendar.CalendarAPI, config map[string][
 		description, _ := args["description"].(string)
 		location, _ := args["location"].(string)
 
+		var recurrence []string
+		if val, ok := args["recurrence"].(string); ok && val != "" {
+			// User passes a single string, but API expects array.
+			// mcp-go doesn't support array arguments easily in schema builder yet without raw json,
+			// but we can accept a string and maybe split it or just treat as single rule.
+			// The prompt said "recurrence rules (RRULE)" and RFC5545. Calendar API takes []string.
+			// Or we can try to parse JSON array if user provides it.
+			// For simplicity, let's assume it's a JSON array string if it starts with [, otherwise single rule.
+			if len(val) > 0 && val[0] == '[' {
+				if err := json.Unmarshal([]byte(val), &recurrence); err != nil {
+					return mcp.NewToolResultError(fmt.Sprintf("failed to parse recurrence JSON: %v", err)), nil
+				}
+			} else {
+				recurrence = []string{val}
+			}
+		} else if val, ok := args["recurrence"].([]interface{}); ok {
+			// If mcp-go handles array parsing
+			for _, v := range val {
+				if s, ok := v.(string); ok {
+					recurrence = append(recurrence, s)
+				}
+			}
+		}
+
 		// Parse times (basic RFC3339 validation)
 		startTime, err := time.Parse(time.RFC3339, startTimeStr)
 		if err != nil {
@@ -186,6 +213,7 @@ func CalendarCreateEventHandler(client calendar.CalendarAPI, config map[string][
 			End: &googleCalendar.EventDateTime{
 				DateTime: endTime.Format(time.RFC3339),
 			},
+			Recurrence: recurrence,
 		}
 
 		createdEvent, err := client.CreateEvent(calendarID, event)
@@ -199,5 +227,143 @@ func CalendarCreateEventHandler(client calendar.CalendarAPI, config map[string][
 		}
 
 		return mcp.NewToolResultText(string(jsonBytes)), nil
+
+	}
+}
+
+func CalendarPatchEventTool() mcp.Tool {
+	return mcp.NewTool("calendar_patch_event",
+		mcp.WithDescription("Update/Patch an existing event in a specific calendar."),
+		mcp.WithString("calendar", mcp.Description("The calendar ID (default: 'primary').")),
+		mcp.WithString("eventId", mcp.Required(), mcp.Description("The ID of the event to update.")),
+		mcp.WithString("summary", mcp.Description("New title of the event.")),
+		mcp.WithString("startTime", mcp.Description("New start time (RFC3339).")),
+		mcp.WithString("endTime", mcp.Description("New end time (RFC3339).")),
+		mcp.WithString("description", mcp.Description("New description.")),
+		mcp.WithString("location", mcp.Description("New location.")),
+		mcp.WithString("recurrence", mcp.Description("New recurrence rules (replaces existing).")),
+	)
+}
+
+func CalendarPatchEventHandler(client calendar.CalendarAPI, config map[string][]string) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args, ok := request.Params.Arguments.(map[string]interface{})
+		if !ok {
+			return mcp.NewToolResultError("arguments must be a map"), nil
+		}
+
+		calendarID := "primary"
+		if val, ok := args["calendar"].(string); ok && val != "" {
+			calendarID = val
+		}
+
+		allowedCalendars := config["calendars"]
+		if !isCalendarAllowed(calendarID, allowedCalendars) {
+			return mcp.NewToolResultError(fmt.Sprintf("access to calendar '%s' is not allowed by configuration", calendarID)), nil
+		}
+
+		eventID, ok := args["eventId"].(string)
+		if !ok {
+			return mcp.NewToolResultError("eventId is required"), nil
+		}
+
+		event := &googleCalendar.Event{}
+
+		if val, ok := args["summary"].(string); ok {
+			event.Summary = val
+		}
+		if val, ok := args["description"].(string); ok {
+			event.Description = val
+		}
+		if val, ok := args["location"].(string); ok {
+			event.Location = val
+		}
+
+		if val, ok := args["startTime"].(string); ok && val != "" {
+			t, err := time.Parse(time.RFC3339, val)
+			if err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("invalid startTime format: %v", err)), nil
+			}
+			event.Start = &googleCalendar.EventDateTime{DateTime: t.Format(time.RFC3339)}
+		}
+
+		if val, ok := args["endTime"].(string); ok && val != "" {
+			t, err := time.Parse(time.RFC3339, val)
+			if err != nil {
+				return mcp.NewToolResultError(fmt.Sprintf("invalid endTime format: %v", err)), nil
+			}
+			event.End = &googleCalendar.EventDateTime{DateTime: t.Format(time.RFC3339)}
+		}
+
+		// Handle Recurrence
+		if val, ok := args["recurrence"].(string); ok && val != "" {
+			var recurrence []string
+			if len(val) > 0 && val[0] == '[' {
+				if err := json.Unmarshal([]byte(val), &recurrence); err != nil {
+					return mcp.NewToolResultError(fmt.Sprintf("failed to parse recurrence JSON: %v", err)), nil
+				}
+			} else {
+				recurrence = []string{val}
+			}
+			event.Recurrence = recurrence
+		} else if val, ok := args["recurrence"].([]interface{}); ok {
+			var recurrence []string
+			for _, v := range val {
+				if s, ok := v.(string); ok {
+					recurrence = append(recurrence, s)
+				}
+			}
+			event.Recurrence = recurrence
+		}
+
+		patchedEvent, err := client.PatchEvent(calendarID, eventID, event)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to patch event: %v", err)), nil
+		}
+
+		jsonBytes, err := json.Marshal(patchedEvent)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to marshal patched event to JSON: %v", err)), nil
+		}
+
+		return mcp.NewToolResultText(string(jsonBytes)), nil
+	}
+}
+
+func CalendarDeleteEventTool() mcp.Tool {
+	return mcp.NewTool("calendar_delete_event",
+		mcp.WithDescription("Delete an event from a specific calendar."),
+		mcp.WithString("calendar", mcp.Description("The calendar ID (default: 'primary').")),
+		mcp.WithString("eventId", mcp.Required(), mcp.Description("The ID of the event to delete.")),
+	)
+}
+
+func CalendarDeleteEventHandler(client calendar.CalendarAPI, config map[string][]string) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args, ok := request.Params.Arguments.(map[string]interface{})
+		if !ok {
+			return mcp.NewToolResultError("arguments must be a map"), nil
+		}
+
+		calendarID := "primary"
+		if val, ok := args["calendar"].(string); ok && val != "" {
+			calendarID = val
+		}
+
+		allowedCalendars := config["calendars"]
+		if !isCalendarAllowed(calendarID, allowedCalendars) {
+			return mcp.NewToolResultError(fmt.Sprintf("access to calendar '%s' is not allowed by configuration", calendarID)), nil
+		}
+
+		eventID, ok := args["eventId"].(string)
+		if !ok {
+			return mcp.NewToolResultError("eventId is required"), nil
+		}
+
+		if err := client.DeleteEvent(calendarID, eventID); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to delete event: %v", err)), nil
+		}
+
+		return mcp.NewToolResultText(fmt.Sprintf("Event %s deleted successfully from calendar %s", eventID, calendarID)), nil
 	}
 }

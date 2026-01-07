@@ -45,6 +45,19 @@ func (m *MockCalendarAPI) CreateEvent(calendarID string, event *googleCalendar.E
 	return args.Get(0).(*googleCalendar.Event), args.Error(1)
 }
 
+func (m *MockCalendarAPI) PatchEvent(calendarID, eventID string, event *googleCalendar.Event) (*googleCalendar.Event, error) {
+	args := m.Called(calendarID, eventID, event)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*googleCalendar.Event), args.Error(1)
+}
+
+func (m *MockCalendarAPI) DeleteEvent(calendarID, eventID string) error {
+	args := m.Called(calendarID, eventID)
+	return args.Error(0)
+}
+
 func TestCalendarListTool(t *testing.T) {
 	mockClient := new(MockCalendarAPI)
 
@@ -244,4 +257,71 @@ func TestCalendarCreateEventTool_MissingArgs(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, res.IsError)
 	assert.Contains(t, res.Content[0].(mcp.TextContent).Text, "startTime is required")
+}
+
+func TestCalendarPatchEventTool(t *testing.T) {
+	mockClient := new(MockCalendarAPI)
+
+	expectedEvent := &googleCalendar.Event{Id: "evt1", Summary: "Updated Summary", HtmlLink: "http://link"}
+
+	// We matched against a pointer in CreateEvent, here we do similar for PatchEvent
+	mockClient.On("PatchEvent", "primary", "evt1", mock.AnythingOfType("*calendar.Event")).Return(expectedEvent, nil)
+
+	config := map[string][]string{}
+
+	srv, err := mcptest.NewServer(t, server.ServerTool{
+		Tool:    CalendarPatchEventTool(),
+		Handler: CalendarPatchEventHandler(mockClient, config),
+	})
+	require.NoError(t, err)
+	defer srv.Close()
+
+	res, err := srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Name: "calendar_patch_event",
+			Arguments: map[string]interface{}{
+				"eventId": "evt1",
+				"summary": "Updated Summary",
+			},
+		},
+	})
+	require.NoError(t, err)
+	assert.False(t, res.IsError)
+
+	textContent, ok := res.Content[0].(mcp.TextContent)
+	require.True(t, ok)
+	var resultEvent googleCalendar.Event
+	err = json.Unmarshal([]byte(textContent.Text), &resultEvent)
+	require.NoError(t, err)
+	assert.Equal(t, "Updated Summary", resultEvent.Summary)
+}
+
+func TestCalendarDeleteEventTool(t *testing.T) {
+	mockClient := new(MockCalendarAPI)
+
+	mockClient.On("DeleteEvent", "primary", "evt1").Return(nil)
+
+	config := map[string][]string{}
+
+	srv, err := mcptest.NewServer(t, server.ServerTool{
+		Tool:    CalendarDeleteEventTool(),
+		Handler: CalendarDeleteEventHandler(mockClient, config),
+	})
+	require.NoError(t, err)
+	defer srv.Close()
+
+	res, err := srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Name: "calendar_delete_event",
+			Arguments: map[string]interface{}{
+				"eventId": "evt1",
+			},
+		},
+	})
+	require.NoError(t, err)
+	assert.False(t, res.IsError)
+
+	textContent, ok := res.Content[0].(mcp.TextContent)
+	require.True(t, ok)
+	assert.Contains(t, textContent.Text, "deleted successfully")
 }
