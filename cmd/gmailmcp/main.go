@@ -66,7 +66,6 @@ func runAuth(cfg *config.Config) {
 	if err != nil {
 		log.Fatalf("API verification failed: %v", err)
 	}
-
 	fmt.Println("Gmail authentication and verification completed successfully!")
 }
 

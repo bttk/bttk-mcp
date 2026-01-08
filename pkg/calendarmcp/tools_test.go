@@ -325,3 +325,67 @@ func TestCalendarDeleteEventTool(t *testing.T) {
 	require.True(t, ok)
 	assert.Contains(t, textContent.Text, "deleted successfully")
 }
+
+func TestCalendarCreateEventTool_AllDay(t *testing.T) {
+	mockClient := new(MockCalendarAPI)
+
+	expectedEvent := &googleCalendar.Event{Id: "evt1"}
+
+	// Expect CreateEvent to be called with Start.Date and End.Date set
+	mockClient.On("CreateEvent", "primary", mock.MatchedBy(func(e *googleCalendar.Event) bool {
+		return e.Start.Date == "2023-10-01" && e.End.Date == "2023-10-02" && e.Start.DateTime == "" && e.End.DateTime == ""
+	})).Return(expectedEvent, nil)
+
+	config := map[string][]string{}
+
+	srv, err := mcptest.NewServer(t, server.ServerTool{
+		Tool:    CalendarCreateEventTool(),
+		Handler: CalendarCreateEventHandler(mockClient, config),
+	})
+	require.NoError(t, err)
+	defer srv.Close()
+
+	res, err := srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Name: "calendar_create_event",
+			Arguments: map[string]interface{}{
+				"summary":   "All Day Event",
+				"startTime": "2023-10-01",
+				"endTime":   "2023-10-02",
+			},
+		},
+	})
+	require.NoError(t, err)
+	assert.False(t, res.IsError)
+}
+
+func TestCalendarPatchEventTool_AllDay(t *testing.T) {
+	mockClient := new(MockCalendarAPI)
+
+	expectedEvent := &googleCalendar.Event{Id: "evt1", Start: &googleCalendar.EventDateTime{Date: "2023-10-01"}}
+
+	mockClient.On("PatchEvent", "primary", "evt1", mock.MatchedBy(func(e *googleCalendar.Event) bool {
+		return e.Start != nil && e.Start.Date == "2023-10-01" && e.Start.DateTime == ""
+	})).Return(expectedEvent, nil)
+
+	config := map[string][]string{}
+
+	srv, err := mcptest.NewServer(t, server.ServerTool{
+		Tool:    CalendarPatchEventTool(),
+		Handler: CalendarPatchEventHandler(mockClient, config),
+	})
+	require.NoError(t, err)
+	defer srv.Close()
+
+	res, err := srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Name: "calendar_patch_event",
+			Arguments: map[string]interface{}{
+				"eventId":   "evt1",
+				"startTime": "2023-10-01",
+			},
+		},
+	})
+	require.NoError(t, err)
+	assert.False(t, res.IsError)
+}

@@ -172,6 +172,17 @@ func parseRecurrence(recurrenceArg interface{}) ([]string, error) {
 	return nil, nil
 }
 
+func parseEventDateTime(val string) (*googleCalendar.EventDateTime, error) {
+	if t, err := time.Parse("2006-01-02", val); err == nil {
+		return &googleCalendar.EventDateTime{Date: t.Format("2006-01-02")}, nil
+	}
+	t, err := time.Parse(time.RFC3339, val)
+	if err != nil {
+		return nil, err
+	}
+	return &googleCalendar.EventDateTime{DateTime: t.Format(time.RFC3339)}, nil
+}
+
 func CalendarCreateEventHandler(client calendar.API, config map[string][]string) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	return func(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args, ok := request.Params.Arguments.(map[string]interface{})
@@ -208,12 +219,12 @@ func CalendarCreateEventHandler(client calendar.API, config map[string][]string)
 			return mcp.NewToolResultError(fmt.Sprintf("failed to parse recurrence: %v", err)), nil
 		}
 
-		// Parse times (basic RFC3339 validation)
-		startTime, err := time.Parse(time.RFC3339, startTimeStr)
+		// Parse times
+		start, err := parseEventDateTime(startTimeStr)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("invalid startTime format: %v", err)), nil
 		}
-		endTime, err := time.Parse(time.RFC3339, endTimeStr)
+		end, err := parseEventDateTime(endTimeStr)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("invalid endTime format: %v", err)), nil
 		}
@@ -222,13 +233,9 @@ func CalendarCreateEventHandler(client calendar.API, config map[string][]string)
 			Summary:     summary,
 			Description: description,
 			Location:    location,
-			Start: &googleCalendar.EventDateTime{
-				DateTime: startTime.Format(time.RFC3339),
-			},
-			End: &googleCalendar.EventDateTime{
-				DateTime: endTime.Format(time.RFC3339),
-			},
-			Recurrence: recurrence,
+			Start:       start,
+			End:         end,
+			Recurrence:  recurrence,
 		}
 
 		createdEvent, err := client.CreateEvent(calendarID, event)
@@ -293,19 +300,19 @@ func CalendarPatchEventHandler(client calendar.API, config map[string][]string) 
 		}
 
 		if val, ok := args["startTime"].(string); ok && val != "" {
-			t, err := time.Parse(time.RFC3339, val)
+			start, err := parseEventDateTime(val)
 			if err != nil {
 				return mcp.NewToolResultError(fmt.Sprintf("invalid startTime format: %v", err)), nil
 			}
-			event.Start = &googleCalendar.EventDateTime{DateTime: t.Format(time.RFC3339)}
+			event.Start = start
 		}
 
 		if val, ok := args["endTime"].(string); ok && val != "" {
-			t, err := time.Parse(time.RFC3339, val)
+			end, err := parseEventDateTime(val)
 			if err != nil {
 				return mcp.NewToolResultError(fmt.Sprintf("invalid endTime format: %v", err)), nil
 			}
-			event.End = &googleCalendar.EventDateTime{DateTime: t.Format(time.RFC3339)}
+			event.End = end
 		}
 
 		// Handle Recurrence
