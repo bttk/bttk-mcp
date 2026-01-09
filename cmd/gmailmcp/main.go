@@ -62,7 +62,7 @@ func runAuth(cfg *config.Config) {
 	fmt.Println("Authentication successful. Verifying API access...")
 
 	// Perform a simple search to verify the token works for API calls
-	_, err = client.SearchMessages("label:INBOX")
+	_, err = client.SearchMessages("label:INBOX", 1)
 	if err != nil {
 		log.Fatalf("API verification failed: %v", err)
 	}

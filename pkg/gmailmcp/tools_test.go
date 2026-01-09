@@ -2,6 +2,7 @@ package gmailmcp
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"testing"
 
@@ -16,13 +17,13 @@ var errMessageNotFound = errors.New("message not found")
 
 // MockGmailClient is a mock implementation of pkg_gmail.GmailAPI
 type MockGmailClient struct {
-	SearchMessagesFunc func(query string) ([]*gmail.Message, error)
+	SearchMessagesFunc func(query string, maxResults int64) ([]*gmail.Message, error)
 	GetMessageFunc     func(id string) (*gmail.Message, error)
 }
 
-func (m *MockGmailClient) SearchMessages(query string) ([]*gmail.Message, error) {
+func (m *MockGmailClient) SearchMessages(query string, maxResults int64) ([]*gmail.Message, error) {
 	if m.SearchMessagesFunc != nil {
-		return m.SearchMessagesFunc(query)
+		return m.SearchMessagesFunc(query, maxResults)
 	}
 	return nil, nil
 }
@@ -36,7 +37,7 @@ func (m *MockGmailClient) GetMessage(id string) (*gmail.Message, error) {
 
 func TestGmailSearch(t *testing.T) {
 	mockClient := &MockGmailClient{
-		SearchMessagesFunc: func(query string) ([]*gmail.Message, error) {
+		SearchMessagesFunc: func(query string, _ int64) ([]*gmail.Message, error) {
 			if query == "test" {
 				return []*gmail.Message{
 					{Id: "123", ThreadId: "t123"},
@@ -66,16 +67,11 @@ func TestGmailSearch(t *testing.T) {
 	assert.False(t, res.IsError, "Tool result should not be an error")
 
 	// Check output
-	var content string
-	for _, c := range res.Content {
-		if text, ok := c.(mcp.TextContent); ok {
-			content += text.Text
-		}
-	}
-
-	expectedSnippet := "Found 2 messages"
-	assert.NotEmpty(t, content)
-	assert.Contains(t, content, expectedSnippet)
+	assert.Len(t, res.Content, 1)
+	text, ok := res.Content[0].(mcp.TextContent)
+	assert.True(t, ok)
+	assert.Contains(t, text.Text, `"count":2`)
+	assert.Contains(t, text.Text, `"id":"123"`)
 }
 
 func TestGmailRead(t *testing.T) {
@@ -87,12 +83,13 @@ func TestGmailRead(t *testing.T) {
 					ThreadId: "t123",
 					Snippet:  "Hello world",
 					Payload: &gmail.MessagePart{
+						MimeType: "text/plain",
 						Headers: []*gmail.MessagePartHeader{
 							{Name: "Subject", Value: "Test Email"},
 							{Name: "From", Value: "sender@example.com"},
 						},
 						Body: &gmail.MessagePartBody{
-							Data: "This is the body",
+							Data: base64.URLEncoding.EncodeToString([]byte("This is the decoded body content.")),
 						},
 					},
 				}, nil
@@ -112,7 +109,7 @@ func TestGmailRead(t *testing.T) {
 		Params: mcp.CallToolParams{
 			Name: "gmail_read",
 			Arguments: map[string]interface{}{
-				"message_id": "123",
+				"messageId": "123",
 			},
 		},
 	})
@@ -120,16 +117,27 @@ func TestGmailRead(t *testing.T) {
 	assert.False(t, res.IsError, "Tool result should not be an error")
 
 	// Check output
-	var content string
-	for _, c := range res.Content {
-		if text, ok := c.(mcp.TextContent); ok {
-			content += text.Text
-		}
-	}
+	assert.Len(t, res.Content, 1)
+	text, ok := res.Content[0].(mcp.TextContent)
+	assert.True(t, ok)
 
 	// Quick checks
-	checks := []string{"Subject: Test Email", "From: sender@example.com", "This is the body"}
+	checks := []string{`"id":"123"`, `"snippet":"Hello world"`, `"Test Email"`, `"sender@example.com"`, `"This is the decoded body content."`}
 	for _, check := range checks {
-		assert.Contains(t, content, check)
+		assert.Contains(t, text.Text, check)
 	}
+
+	// Test truncation
+	res, err = srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Name: "gmail_read",
+			Arguments: map[string]interface{}{
+				"messageId":    "123",
+				"maxBodyBytes": 10,
+			},
+		},
+	})
+	assert.NoError(t, err)
+	text, _ = res.Content[0].(mcp.TextContent)
+	assert.Contains(t, text.Text, "This is th... [TRUNCATED]")
 }

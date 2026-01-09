@@ -2,11 +2,19 @@ package gmailmcp
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
+	"strings"
 
 	"github.com/bttk/bttk-mcp/pkg/gmail"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	gmailv1 "google.golang.org/api/gmail/v1"
+)
+
+const (
+	defaultMaxResults   = 50
+	defaultMaxBodyBytes = 10000
 )
 
 // AddTools registers Gmail tools to the MCP server.
@@ -19,6 +27,7 @@ func GmailSearchTool() mcp.Tool {
 	return mcp.NewTool("gmail_search",
 		mcp.WithDescription("Search for Gmail messages using a query string."),
 		mcp.WithString("query", mcp.Required(), mcp.Description("The search query (e.g., 'from:user@example.com', 'subject:meeting').")),
+		mcp.WithNumber("maxResults", mcp.Description("Maximum number of results to return (default 50).")),
 	)
 }
 
@@ -33,30 +42,28 @@ func GmailSearchHandler(client gmail.API) func(ctx context.Context, request mcp.
 			return mcp.NewToolResultError("query argument must be a string"), nil
 		}
 
-		msgs, err := client.SearchMessages(query)
+		maxResults := int64(defaultMaxResults)
+		if mr, ok := args["maxResults"].(float64); ok {
+			maxResults = int64(mr)
+		}
+
+		msgs, err := client.SearchMessages(query, maxResults)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to search messages: %v", err)), nil
 		}
 
-		if len(msgs) == 0 {
-			return mcp.NewToolResultText("No messages found matching the query."), nil
-		}
-
-		// Simplified summary of results
-		var summary string
-		for _, msg := range msgs {
-			summary += fmt.Sprintf("- ID: %s, ThreadID: %s\n", msg.Id, msg.ThreadId)
-		}
-		summary += fmt.Sprintf("\nFound %d messages. Use gmail_read with an ID to see content.", len(msgs))
-
-		return mcp.NewToolResultText(summary), nil
+		return mcp.NewToolResultJSON(map[string]interface{}{
+			"messages": msgs,
+			"count":    len(msgs),
+		})
 	}
 }
 
 func GmailReadTool() mcp.Tool {
 	return mcp.NewTool("gmail_read",
 		mcp.WithDescription("Read the content of a specific Gmail message by ID."),
-		mcp.WithString("message_id", mcp.Required(), mcp.Description("The ID of the message to read.")),
+		mcp.WithString("messageId", mcp.Required(), mcp.Description("The ID of the message to read.")),
+		mcp.WithNumber("maxBodyBytes", mcp.Description("Maximum bytes of body content to return (default 10000).")),
 	)
 }
 
@@ -66,9 +73,14 @@ func GmailReadHandler(client gmail.API) func(ctx context.Context, request mcp.Ca
 		if !ok {
 			return mcp.NewToolResultError("arguments must be a map"), nil
 		}
-		id, ok := args["message_id"].(string)
+		id, ok := args["messageId"].(string)
 		if !ok {
-			return mcp.NewToolResultError("message_id argument must be a string"), nil
+			return mcp.NewToolResultError("messageId argument must be a string"), nil
+		}
+
+		maxBodyBytes := defaultMaxBodyBytes
+		if mbb, ok := args["maxBodyBytes"].(float64); ok {
+			maxBodyBytes = int(mbb)
 		}
 
 		msg, err := client.GetMessage(id)
@@ -76,30 +88,54 @@ func GmailReadHandler(client gmail.API) func(ctx context.Context, request mcp.Ca
 			return mcp.NewToolResultError(fmt.Sprintf("failed to get message: %v", err)), nil
 		}
 
-		// Extract meaningful content (simplified)
-		var content string
-		content += fmt.Sprintf("ID: %s\nThreadID: %s\nSnippet: %s\n", msg.Id, msg.ThreadId, msg.Snippet)
+		currentBytes := 0
+		processPart(msg.Payload, maxBodyBytes, &currentBytes)
 
-		// Headers
-		for _, h := range msg.Payload.Headers {
-			if h.Name == "Subject" || h.Name == "From" || h.Name == "To" || h.Name == "Date" {
-				content += fmt.Sprintf("%s: %s\n", h.Name, h.Value)
-			}
-		}
+		return mcp.NewToolResultJSON(msg)
+	}
+}
 
-		// Body (very basic extraction of text/plain)
-		// Accessing parts can be complex in Gmail API, this is a best-effort simple text grab.
-		if msg.Payload.Body != nil && msg.Payload.Body.Data != "" {
-			content += "\n--- Body ---\n" + msg.Payload.Body.Data // This is base64url encoded usually, need to decode if raw
-		} else if len(msg.Payload.Parts) > 0 {
-			content += "\n--- Parts ---\n"
-			for _, p := range msg.Payload.Parts {
-				if p.MimeType == "text/plain" && p.Body.Data != "" {
-					content += p.Body.Data // Base64 encoded
-				}
-			}
-		}
+func processPart(part *gmailv1.MessagePart, maxBytes int, currentBytes *int) {
+	if part == nil {
+		return
+	}
 
-		return mcp.NewToolResultText(content), nil
+	if part.Body != nil && part.Body.Data != "" {
+		processPartBody(part, maxBytes, currentBytes)
+	}
+
+	for _, p := range part.Parts {
+		processPart(p, maxBytes, currentBytes)
+	}
+}
+
+func processPartBody(part *gmailv1.MessagePart, maxBytes int, currentBytes *int) {
+	isText := strings.Contains(part.MimeType, "text/plain") || strings.Contains(part.MimeType, "text/html")
+	if !isText {
+		// Non-text message parts: remove data but leave metadata
+		part.Body.Data = ""
+		return
+	}
+
+	// Gmail uses base64url encoding
+	data, err := base64.URLEncoding.DecodeString(part.Body.Data)
+	if err != nil {
+		// Try raw if standard fails (sometimes padding is missing)
+		data, err = base64.RawURLEncoding.DecodeString(part.Body.Data)
+	}
+	if err != nil {
+		return
+	}
+
+	remaining := maxBytes - *currentBytes
+	switch {
+	case remaining <= 0:
+		part.Body.Data = ""
+	case len(data) > remaining:
+		part.Body.Data = string(data[:remaining]) + "... [TRUNCATED]"
+		*currentBytes = maxBytes
+	default:
+		part.Body.Data = string(data)
+		*currentBytes += len(data)
 	}
 }

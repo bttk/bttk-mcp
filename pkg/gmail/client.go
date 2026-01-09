@@ -32,7 +32,7 @@ type Client struct {
 // API defines the interface for interacting with Gmail.
 // This allows for mocking in tests.
 type API interface {
-	SearchMessages(query string) ([]*gmail.Message, error)
+	SearchMessages(query string, maxResults int64) ([]*gmail.Message, error)
 	GetMessage(id string) (*gmail.Message, error)
 }
 
@@ -60,9 +60,9 @@ func NewClient(credentialsPath, tokenPath string) (*Client, error) {
 
 // SearchMessages searches for messages matching the query.
 // It returns a list of simplified message details.
-func (c *Client) SearchMessages(query string) ([]*gmail.Message, error) {
+func (c *Client) SearchMessages(query string, maxResults int64) ([]*gmail.Message, error) {
 	user := "me"
-	r, err := c.Service.Users.Messages.List(user).Q(query).Do()
+	r, err := c.Service.Users.Messages.List(user).Q(query).MaxResults(maxResults).Do()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrListMessages, err)
 	}
