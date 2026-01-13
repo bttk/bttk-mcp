@@ -29,6 +29,8 @@ var (
 	ErrPatchEvent = errors.New("unable to patch event")
 	// ErrDeleteEvent is returned when an event cannot be deleted.
 	ErrDeleteEvent = errors.New("unable to delete event")
+	// ErrMoveEvent is returned when an event cannot be moved.
+	ErrMoveEvent = errors.New("unable to move event")
 )
 
 // Client is a wrapper around the Google Calendar API service.
@@ -44,6 +46,7 @@ type API interface {
 	CreateEvent(calendarID string, event *calendar.Event) (*calendar.Event, error)
 	PatchEvent(calendarID, eventID string, event *calendar.Event) (*calendar.Event, error)
 	DeleteEvent(calendarID, eventID string) error
+	MoveEvent(calendarID, eventID, destinationID string) (*calendar.Event, error)
 }
 
 // NewClient creates a new Calendar client.
@@ -124,4 +127,13 @@ func (c *Client) DeleteEvent(calendarID, eventID string) error {
 		return fmt.Errorf("%w: %w", ErrDeleteEvent, err)
 	}
 	return nil
+}
+
+// MoveEvent moves an event to another calendar.
+func (c *Client) MoveEvent(calendarID, eventID, destinationID string) (*calendar.Event, error) {
+	movedEvent, err := c.Service.Events.Move(calendarID, eventID, destinationID).Do()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrMoveEvent, err)
+	}
+	return movedEvent, nil
 }

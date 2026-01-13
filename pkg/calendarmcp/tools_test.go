@@ -58,6 +58,14 @@ func (m *MockCalendarAPI) DeleteEvent(calendarID, eventID string) error {
 	return args.Error(0)
 }
 
+func (m *MockCalendarAPI) MoveEvent(calendarID, eventID, destinationID string) (*googleCalendar.Event, error) {
+	args := m.Called(calendarID, eventID, destinationID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*googleCalendar.Event), args.Error(1)
+}
+
 func TestCalendarListTool(t *testing.T) {
 	mockClient := new(MockCalendarAPI)
 
@@ -388,4 +396,39 @@ func TestCalendarPatchEventTool_AllDay(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.False(t, res.IsError)
+}
+
+func TestCalendarMoveEventTool(t *testing.T) {
+	mockClient := new(MockCalendarAPI)
+
+	expectedEvent := &googleCalendar.Event{Id: "evt1", HtmlLink: "http://link"}
+	mockClient.On("MoveEvent", "primary", "evt1", "destCal").Return(expectedEvent, nil)
+
+	config := map[string][]string{}
+
+	srv, err := mcptest.NewServer(t, server.ServerTool{
+		Tool:    CalendarMoveEventTool(),
+		Handler: CalendarMoveEventHandler(mockClient, config),
+	})
+	require.NoError(t, err)
+	defer srv.Close()
+
+	res, err := srv.Client().CallTool(context.Background(), mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Name: "calendar_move_event",
+			Arguments: map[string]interface{}{
+				"eventId":     "evt1",
+				"destination": "destCal",
+			},
+		},
+	})
+	require.NoError(t, err)
+	assert.False(t, res.IsError)
+
+	textContent, ok := res.Content[0].(mcp.TextContent)
+	require.True(t, ok)
+	var resultEvent googleCalendar.Event
+	err = json.Unmarshal([]byte(textContent.Text), &resultEvent)
+	require.NoError(t, err)
+	assert.Equal(t, "evt1", resultEvent.Id)
 }

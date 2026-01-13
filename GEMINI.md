@@ -53,6 +53,7 @@ A custom Go client for the Google Calendar API.
 | `calendar_list` | Lists available Google Calendars. |
 | `calendar_list_events` | Lists upcoming events from a specific calendar. |
 | `calendar_create_event` | Creates a new event in a specific calendar. |
+| `calendar_move_event` | Moves an event from one calendar to another. |
 
 ### MCP structured content
 

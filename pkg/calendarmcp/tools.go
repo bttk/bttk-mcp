@@ -24,6 +24,7 @@ func AddTools(s *server.MCPServer, client calendar.API, config map[string][]stri
 	s.AddTool(CalendarCreateEventTool(), CalendarCreateEventHandler(client, config))
 	s.AddTool(CalendarPatchEventTool(), CalendarPatchEventHandler(client, config))
 	s.AddTool(CalendarDeleteEventTool(), CalendarDeleteEventHandler(client, config))
+	s.AddTool(CalendarMoveEventTool(), CalendarMoveEventHandler(client, config))
 }
 
 func isCalendarAllowed(calendarID string, allowedCalendars []string) bool {
@@ -372,5 +373,58 @@ func CalendarDeleteEventHandler(client calendar.API, config map[string][]string)
 		}
 
 		return mcp.NewToolResultText(fmt.Sprintf("Event %s deleted successfully from calendar %s", eventID, calendarID)), nil
+	}
+}
+
+func CalendarMoveEventTool() mcp.Tool {
+	return mcp.NewTool("calendar_move_event",
+		mcp.WithDescription("Move an event from one calendar to another."),
+		mcp.WithString("calendar", mcp.Description("The source calendar ID (default: 'primary').")),
+		mcp.WithString("eventId", mcp.Required(), mcp.Description("The ID of the event to move.")),
+		mcp.WithString("destination", mcp.Required(), mcp.Description("The destination calendar ID.")),
+	)
+}
+
+func CalendarMoveEventHandler(client calendar.API, config map[string][]string) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args, ok := request.Params.Arguments.(map[string]interface{})
+		if !ok {
+			return mcp.NewToolResultError("arguments must be a map"), nil
+		}
+
+		calendarID := defaultCalendarID
+		if val, ok := args["calendar"].(string); ok && val != "" {
+			calendarID = val
+		}
+
+		if err := checkCalendarAccess(calendarID, config); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		eventID, ok := args["eventId"].(string)
+		if !ok {
+			return mcp.NewToolResultError("eventId is required"), nil
+		}
+
+		destinationID, ok := args["destination"].(string)
+		if !ok {
+			return mcp.NewToolResultError("destination is required"), nil
+		}
+
+		if err := checkCalendarAccess(destinationID, config); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("destination calendar: %v", err)), nil
+		}
+
+		movedEvent, err := client.MoveEvent(calendarID, eventID, destinationID)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to move event: %v", err)), nil
+		}
+
+		jsonBytes, err := json.Marshal(movedEvent)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to marshal moved event to JSON: %v", err)), nil
+		}
+
+		return mcp.NewToolResultText(string(jsonBytes)), nil
 	}
 }
