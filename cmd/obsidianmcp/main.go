@@ -53,25 +53,47 @@ func main() {
 	)
 
 	// Tool registry map
-	toolRegistry := map[string]func(*server.MCPServer, *obsidian.Client){
-		"get_active_file":       obsidianmcp.RegisterGetActiveFile,
-		"append_active_file":    obsidianmcp.RegisterAppendActiveFile,
-		"patch_active_file":     obsidianmcp.RegisterPatchActiveFile,
-		"search_simple":         obsidianmcp.RegisterSearchSimple,
-		"search_json_logic":     obsidianmcp.RegisterSearchJSONLogic,
-		"search_dql":            obsidianmcp.RegisterSearchDQL,
-		"get_daily_note":        obsidianmcp.RegisterGetDailyNote,
-		"get_file":              obsidianmcp.RegisterGetFile,
-		"list_files":            obsidianmcp.RegisterListFiles,
-		"create_or_update_file": obsidianmcp.RegisterCreateOrUpdateFile,
-		"open_file":             obsidianmcp.RegisterOpenFile,
+	toolRegistry := map[string]func(){
+		"get_active_file": func() {
+			s.AddTool(obsidianmcp.GetActiveFileTool(), obsidianmcp.GetActiveFileHandler(client))
+		},
+		"append_active_file": func() {
+			s.AddTool(obsidianmcp.AppendActiveFileTool(), obsidianmcp.AppendActiveFileHandler(client))
+		},
+		"patch_active_file": func() {
+			s.AddTool(obsidianmcp.PatchActiveFileTool(), obsidianmcp.PatchActiveFileHandler(client))
+		},
+		"search_simple": func() {
+			s.AddTool(obsidianmcp.SearchSimpleTool(), obsidianmcp.SearchSimpleHandler(client))
+		},
+		"search_json_logic": func() {
+			s.AddTool(obsidianmcp.SearchJSONLogicTool(), obsidianmcp.SearchJSONLogicHandler(client))
+		},
+		"search_dql": func() {
+			s.AddTool(obsidianmcp.SearchDQLTool(), obsidianmcp.SearchDQLHandler(client))
+		},
+		"get_daily_note": func() {
+			s.AddTool(obsidianmcp.GetDailyNoteTool(), obsidianmcp.GetDailyNoteHandler(client))
+		},
+		"get_file": func() {
+			s.AddTool(obsidianmcp.GetFileTool(), obsidianmcp.GetFileHandler(client))
+		},
+		"list_files": func() {
+			s.AddTool(obsidianmcp.ListFilesTool(), obsidianmcp.ListFilesHandler(client))
+		},
+		"create_or_update_file": func() {
+			s.AddTool(obsidianmcp.CreateOrUpdateFileTool(), obsidianmcp.CreateOrUpdateFileHandler(client))
+		},
+		"open_file": func() {
+			s.AddTool(obsidianmcp.OpenFileTool(), obsidianmcp.OpenFileHandler(client))
+		},
 	}
 
 	// Register tools based on config
 	for name, registerFunc := range toolRegistry {
 		if enabled, ok := cfg.MCP.Tools[name]; ok && enabled {
 			log.Info().Msgf("Registering tool %s", name)
-			registerFunc(s, client)
+			registerFunc()
 		} else if !ok {
 			// If not in config, we can decide to enable by default or skip.
 			// Given the user request, skipping seems safer if we want strict control.

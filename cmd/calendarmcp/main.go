@@ -106,7 +106,12 @@ func runServer(configPath string) {
 		"calendars": cfg.Calendar.Calendars,
 	}
 
-	calendarmcp.AddTools(s, client, toolConfig)
+	s.AddTool(calendarmcp.CalendarListTool(), calendarmcp.CalendarListHandler(client, toolConfig))
+	s.AddTool(calendarmcp.CalendarListEventsTool(), calendarmcp.CalendarListEventsHandler(client, toolConfig))
+	s.AddTool(calendarmcp.CalendarCreateEventTool(), calendarmcp.CalendarCreateEventHandler(client, toolConfig))
+	s.AddTool(calendarmcp.CalendarPatchEventTool(), calendarmcp.CalendarPatchEventHandler(client, toolConfig))
+	s.AddTool(calendarmcp.CalendarDeleteEventTool(), calendarmcp.CalendarDeleteEventHandler(client, toolConfig))
+	s.AddTool(calendarmcp.CalendarMoveEventTool(), calendarmcp.CalendarMoveEventHandler(client, toolConfig))
 
 	if err := serveStdio(s); err != nil {
 		fmt.Printf("Server error: %v\n", err)

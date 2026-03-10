@@ -40,7 +40,17 @@ func TestGmailSearch(t *testing.T) {
 		SearchMessagesFunc: func(query string, _ int64) ([]*gmail.Message, error) {
 			if query == "test" {
 				return []*gmail.Message{
-					{Id: "123", ThreadId: "t123"},
+					{
+						Id:       "123",
+						ThreadId: "t123",
+						Snippet:  "Verification code...",
+						Payload: &gmail.MessagePart{
+							Headers: []*gmail.MessagePartHeader{
+								{Name: "To", Value: "me@example.com"},
+								{Name: "From", Value: "noreply@google.com"},
+							},
+						},
+					},
 					{Id: "124", ThreadId: "t124"},
 				}, nil
 			}
@@ -72,6 +82,9 @@ func TestGmailSearch(t *testing.T) {
 	assert.True(t, ok)
 	assert.Contains(t, text.Text, `"count":2`)
 	assert.Contains(t, text.Text, `"id":"123"`)
+	assert.Contains(t, text.Text, `"snippet":"Verification code..."`)
+	assert.Contains(t, text.Text, `"name":"To","value":"me@example.com"`)
+	assert.Contains(t, text.Text, `"name":"From","value":"noreply@google.com"`)
 }
 
 func TestGmailRead(t *testing.T) {

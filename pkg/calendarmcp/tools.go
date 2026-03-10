@@ -9,23 +9,13 @@ import (
 
 	"github.com/bttk/bttk-mcp/pkg/calendar"
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
+
 	googleCalendar "google.golang.org/api/calendar/v3"
 )
 
 var ErrAccessDenied = errors.New("access to calendar is not allowed by configuration")
 
 const defaultCalendarID = "primary"
-
-// AddTools registers Calendar tools to the MCP server.
-func AddTools(s *server.MCPServer, client calendar.API, config map[string][]string) {
-	s.AddTool(CalendarListTool(), CalendarListHandler(client, config))
-	s.AddTool(CalendarListEventsTool(), CalendarListEventsHandler(client, config))
-	s.AddTool(CalendarCreateEventTool(), CalendarCreateEventHandler(client, config))
-	s.AddTool(CalendarPatchEventTool(), CalendarPatchEventHandler(client, config))
-	s.AddTool(CalendarDeleteEventTool(), CalendarDeleteEventHandler(client, config))
-	s.AddTool(CalendarMoveEventTool(), CalendarMoveEventHandler(client, config))
-}
 
 func isCalendarAllowed(calendarID string, allowedCalendars []string) bool {
 	if len(allowedCalendars) == 0 {
@@ -49,6 +39,7 @@ func checkCalendarAccess(calendarID string, config map[string][]string) error {
 
 func CalendarListTool() mcp.Tool {
 	return mcp.NewTool("calendar_list",
+		mcp.WithReadOnlyHintAnnotation(true),
 		mcp.WithDescription("List available calendars."),
 	)
 }
@@ -86,6 +77,7 @@ func CalendarListHandler(client calendar.API, config map[string][]string) func(c
 
 func CalendarListEventsTool() mcp.Tool {
 	return mcp.NewTool("calendar_list_events",
+		mcp.WithReadOnlyHintAnnotation(true),
 		mcp.WithDescription("List upcoming events from a specific calendar."),
 		mcp.WithString("calendar", mcp.Description("The calendar ID to list events from (default: 'primary').")),
 		mcp.WithString("timeMin", mcp.Description("Lower bound (exclusive) for an event's end time to filter by. RFC3339 format. Default is now.")),

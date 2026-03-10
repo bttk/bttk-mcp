@@ -46,7 +46,8 @@ func main() {
 
 	s := server.NewMCPServer("gmailmcp", "1.0.0")
 
-	gmailmcp.AddTools(s, client)
+	s.AddTool(gmailmcp.GmailSearchTool(), gmailmcp.GmailSearchHandler(client))
+	s.AddTool(gmailmcp.GmailReadTool(), gmailmcp.GmailReadHandler(client))
 
 	if err := serveStdio(s); err != nil {
 		fmt.Printf("Server error: %v\n", err)

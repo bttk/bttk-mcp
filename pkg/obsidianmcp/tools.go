@@ -38,10 +38,6 @@ func GetActiveFileHandler(client *obsidian.Client) server.ToolHandlerFunc {
 	}
 }
 
-func RegisterGetActiveFile(s *server.MCPServer, client *obsidian.Client) {
-	s.AddTool(GetActiveFileTool(), GetActiveFileHandler(client))
-}
-
 // AppendActiveFileTool returns the tool definition
 func AppendActiveFileTool() mcp.Tool {
 	return mcp.NewTool("obsidian_append_active_file",
@@ -64,10 +60,6 @@ func AppendActiveFileHandler(client *obsidian.Client) server.ToolHandlerFunc {
 		}
 		return mcp.NewToolResultText("Content appended successfully"), nil
 	}
-}
-
-func RegisterAppendActiveFile(s *server.MCPServer, client *obsidian.Client) {
-	s.AddTool(AppendActiveFileTool(), AppendActiveFileHandler(client))
 }
 
 // PatchActiveFileTool returns the tool definition
@@ -97,10 +89,6 @@ func PatchActiveFileHandler(client *obsidian.Client) server.ToolHandlerFunc {
 	}
 }
 
-func RegisterPatchActiveFile(s *server.MCPServer, client *obsidian.Client) {
-	s.AddTool(PatchActiveFileTool(), PatchActiveFileHandler(client))
-}
-
 // SearchSimpleTool returns the tool definition
 func SearchSimpleTool() mcp.Tool {
 	return mcp.NewTool("obsidian_search_simple",
@@ -127,10 +115,6 @@ func SearchSimpleHandler(client *obsidian.Client) server.ToolHandlerFunc {
 			"results": results,
 		})
 	}
-}
-
-func RegisterSearchSimple(s *server.MCPServer, client *obsidian.Client) {
-	s.AddTool(SearchSimpleTool(), SearchSimpleHandler(client))
 }
 
 // SearchJSONLogicTool returns the tool definition
@@ -183,10 +167,6 @@ func SearchJSONLogicHandler(client *obsidian.Client) server.ToolHandlerFunc {
 	}
 }
 
-func RegisterSearchJSONLogic(s *server.MCPServer, client *obsidian.Client) {
-	s.AddTool(SearchJSONLogicTool(), SearchJSONLogicHandler(client))
-}
-
 // SearchDQLTool returns the tool definition
 func SearchDQLTool() mcp.Tool {
 	return mcp.NewTool("obsidian_search_dql",
@@ -213,13 +193,10 @@ func SearchDQLHandler(client *obsidian.Client) server.ToolHandlerFunc {
 	}
 }
 
-func RegisterSearchDQL(s *server.MCPServer, client *obsidian.Client) {
-	s.AddTool(SearchDQLTool(), SearchDQLHandler(client))
-}
-
 // GetDailyNoteTool returns the tool definition
 func GetDailyNoteTool() mcp.Tool {
 	return mcp.NewTool("obsidian_get_daily_note",
+		mcp.WithReadOnlyHintAnnotation(true),
 		mcp.WithDescription("Get the content of today's daily note"),
 	)
 }
@@ -233,10 +210,6 @@ func GetDailyNoteHandler(client *obsidian.Client) server.ToolHandlerFunc {
 		}
 		return mcp.NewToolResultJSON(content)
 	}
-}
-
-func RegisterGetDailyNote(s *server.MCPServer, client *obsidian.Client) {
-	s.AddTool(GetDailyNoteTool(), GetDailyNoteHandler(client))
 }
 
 // GetFileTool returns the tool definition
@@ -259,10 +232,6 @@ func GetFileHandler(client *obsidian.Client) server.ToolHandlerFunc {
 		}
 		return mcp.NewToolResultJSON(content)
 	}
-}
-
-func RegisterGetFile(s *server.MCPServer, client *obsidian.Client) {
-	s.AddTool(GetFileTool(), GetFileHandler(client))
 }
 
 // ListFilesTool returns the tool definition
@@ -290,10 +259,6 @@ func ListFilesHandler(client *obsidian.Client) server.ToolHandlerFunc {
 	}
 }
 
-func RegisterListFiles(s *server.MCPServer, client *obsidian.Client) {
-	s.AddTool(ListFilesTool(), ListFilesHandler(client))
-}
-
 // CreateOrUpdateFileTool returns the tool definition
 func CreateOrUpdateFileTool() mcp.Tool {
 	return mcp.NewTool("obsidian_create_or_update_file",
@@ -318,10 +283,6 @@ func CreateOrUpdateFileHandler(client *obsidian.Client) server.ToolHandlerFunc {
 	}
 }
 
-func RegisterCreateOrUpdateFile(s *server.MCPServer, client *obsidian.Client) {
-	s.AddTool(CreateOrUpdateFileTool(), CreateOrUpdateFileHandler(client))
-}
-
 // OpenFileTool returns the tool definition
 func OpenFileTool() mcp.Tool {
 	return mcp.NewTool("obsidian_open_file",
@@ -344,8 +305,4 @@ func OpenFileHandler(client *obsidian.Client) server.ToolHandlerFunc {
 		}
 		return mcp.NewToolResultText("File opened successfully"), nil
 	}
-}
-
-func RegisterOpenFile(s *server.MCPServer, client *obsidian.Client) {
-	s.AddTool(OpenFileTool(), OpenFileHandler(client))
 }

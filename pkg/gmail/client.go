@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/bttk/bttk-mcp/internal/googleapi"
@@ -66,7 +67,21 @@ func (c *Client) SearchMessages(query string, maxResults int64) ([]*gmail.Messag
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrListMessages, err)
 	}
-	return r.Messages, nil
+
+	messages := make([]*gmail.Message, 0, len(r.Messages))
+	for _, msg := range r.Messages {
+		m, err := c.Service.Users.Messages.Get(user, msg.Id).
+			Format("metadata").
+			MetadataHeaders("To", "From").
+			Fields("id", "threadId", "snippet", "internalDate", "payload(headers)").
+			Do()
+		if err != nil {
+			log.Printf("failed to get message details for ID %s: %v", msg.Id, err)
+			continue
+		}
+		messages = append(messages, m)
+	}
+	return messages, nil
 }
 
 // GetMessage retrieves the details of a specific message.
