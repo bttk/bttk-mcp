@@ -97,6 +97,11 @@ func PatchActiveFileHandler(client *obsidian.Client) server.ToolHandlerFunc {
 	}
 }
 
+const (
+	defaultSearchContextLength = 100
+	maxMatchesPerFile          = 3
+)
+
 // SearchSimpleTool returns the tool definition
 func SearchSimpleTool() mcp.Tool {
 	return mcp.NewTool("obsidian_search_simple",
@@ -105,7 +110,7 @@ func SearchSimpleTool() mcp.Tool {
 		mcp.WithIdempotentHintAnnotation(true),
 		mcp.WithDescription("Search the vault for files matching a query"),
 		mcp.WithString("query", mcp.Required(), mcp.Description("Search query")),
-		mcp.WithNumber("context_length", mcp.Description("Length of context to return")),
+		mcp.WithNumber("context_length", mcp.Description("Length of context to return"), mcp.DefaultNumber(defaultSearchContextLength)),
 	)
 }
 
@@ -119,6 +124,12 @@ func SearchSimpleHandler(client *obsidian.Client) server.ToolHandlerFunc {
 		results, err := client.Search.Simple(ctx, query, int(contextLen))
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to search: %v", err)), nil
+		}
+
+		for i := range results {
+			if len(results[i].Matches) > maxMatchesPerFile {
+				results[i].Matches = results[i].Matches[:maxMatchesPerFile]
+			}
 		}
 
 		return mcp.NewToolResultJSON(map[string]interface{}{
