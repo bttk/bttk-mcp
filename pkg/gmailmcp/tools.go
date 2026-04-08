@@ -20,6 +20,8 @@ const (
 func GmailSearchTool() mcp.Tool {
 	return mcp.NewTool("gmail_search",
 		mcp.WithReadOnlyHintAnnotation(true),
+		mcp.WithDestructiveHintAnnotation(false),
+		mcp.WithIdempotentHintAnnotation(true),
 		mcp.WithDescription("Search for Gmail messages using a query string."),
 		mcp.WithString("query", mcp.Required(), mcp.Description("The search query (e.g., 'from:user@example.com', 'subject:meeting').")),
 		mcp.WithNumber("maxResults", mcp.Description("Maximum number of results to return (default 50).")),
@@ -57,6 +59,8 @@ func GmailSearchHandler(client gmail.API) func(ctx context.Context, request mcp.
 func GmailReadTool() mcp.Tool {
 	return mcp.NewTool("gmail_read",
 		mcp.WithReadOnlyHintAnnotation(true),
+		mcp.WithDestructiveHintAnnotation(false),
+		mcp.WithIdempotentHintAnnotation(true),
 		mcp.WithDescription("Read the content of a specific Gmail message by ID."),
 		mcp.WithString("messageId", mcp.Required(), mcp.Description("The ID of the message to read.")),
 		mcp.WithNumber("maxBodyBytes", mcp.Description("Maximum bytes of body content to return (default 10000).")),

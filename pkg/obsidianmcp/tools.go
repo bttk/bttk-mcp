@@ -23,6 +23,8 @@ func getArgs(req mcp.CallToolRequest) map[string]interface{} {
 func GetActiveFileTool() mcp.Tool {
 	return mcp.NewTool("obsidian_get_active_file",
 		mcp.WithReadOnlyHintAnnotation(true),
+		mcp.WithDestructiveHintAnnotation(false),
+		mcp.WithIdempotentHintAnnotation(false),
 		mcp.WithDescription("Get the content of the currently active file in Obsidian"),
 	)
 }
@@ -41,6 +43,9 @@ func GetActiveFileHandler(client *obsidian.Client) server.ToolHandlerFunc {
 // AppendActiveFileTool returns the tool definition
 func AppendActiveFileTool() mcp.Tool {
 	return mcp.NewTool("obsidian_append_active_file",
+		mcp.WithReadOnlyHintAnnotation(false),
+		mcp.WithDestructiveHintAnnotation(false),
+		mcp.WithIdempotentHintAnnotation(false),
 		mcp.WithDescription("Append content to the currently active file"),
 		mcp.WithString("content", mcp.Required(), mcp.Description("Content to append")),
 	)
@@ -65,6 +70,9 @@ func AppendActiveFileHandler(client *obsidian.Client) server.ToolHandlerFunc {
 // PatchActiveFileTool returns the tool definition
 func PatchActiveFileTool() mcp.Tool {
 	return mcp.NewTool("obsidian_patch_active_file",
+		mcp.WithReadOnlyHintAnnotation(false),
+		mcp.WithDestructiveHintAnnotation(false),
+		mcp.WithIdempotentHintAnnotation(false),
 		mcp.WithDescription("Patch the currently active file"),
 		mcp.WithString("operation", mcp.Required(), mcp.Description("Operation: append, prepend, replace")),
 		mcp.WithString("target_type", mcp.Required(), mcp.Description("Target type: heading, block, frontmatter")),
@@ -93,6 +101,8 @@ func PatchActiveFileHandler(client *obsidian.Client) server.ToolHandlerFunc {
 func SearchSimpleTool() mcp.Tool {
 	return mcp.NewTool("obsidian_search_simple",
 		mcp.WithReadOnlyHintAnnotation(true),
+		mcp.WithDestructiveHintAnnotation(false),
+		mcp.WithIdempotentHintAnnotation(true),
 		mcp.WithDescription("Search the vault for files matching a query"),
 		mcp.WithString("query", mcp.Required(), mcp.Description("Search query")),
 		mcp.WithNumber("context_length", mcp.Description("Length of context to return")),
@@ -121,6 +131,8 @@ func SearchSimpleHandler(client *obsidian.Client) server.ToolHandlerFunc {
 func SearchJSONLogicTool() mcp.Tool {
 	return mcp.NewTool("obsidian_search_json_logic",
 		mcp.WithReadOnlyHintAnnotation(true),
+		mcp.WithDestructiveHintAnnotation(false),
+		mcp.WithIdempotentHintAnnotation(true),
 		mcp.WithDescription("Search the vault using JsonLogic"),
 		mcp.WithString("query", mcp.Required(), mcp.Description(`JsonLogic query (as a JSON string), e.g. {
   "or": [
@@ -171,6 +183,8 @@ func SearchJSONLogicHandler(client *obsidian.Client) server.ToolHandlerFunc {
 func SearchDQLTool() mcp.Tool {
 	return mcp.NewTool("obsidian_search_dql",
 		mcp.WithReadOnlyHintAnnotation(true),
+		mcp.WithDestructiveHintAnnotation(false),
+		mcp.WithIdempotentHintAnnotation(true),
 		mcp.WithDescription("Search the vault using Dataview Query Language (DQL)"),
 		mcp.WithString("query", mcp.Required(), mcp.Description("DQL query (e.g., 'TABLE file.mtime FROM \"folder\"')")),
 	)
@@ -197,6 +211,8 @@ func SearchDQLHandler(client *obsidian.Client) server.ToolHandlerFunc {
 func GetDailyNoteTool() mcp.Tool {
 	return mcp.NewTool("obsidian_get_daily_note",
 		mcp.WithReadOnlyHintAnnotation(true),
+		mcp.WithDestructiveHintAnnotation(false),
+		mcp.WithIdempotentHintAnnotation(true),
 		mcp.WithDescription("Get the content of today's daily note"),
 	)
 }
@@ -216,6 +232,8 @@ func GetDailyNoteHandler(client *obsidian.Client) server.ToolHandlerFunc {
 func GetFileTool() mcp.Tool {
 	return mcp.NewTool("obsidian_get_file",
 		mcp.WithReadOnlyHintAnnotation(true),
+		mcp.WithDestructiveHintAnnotation(false),
+		mcp.WithIdempotentHintAnnotation(true),
 		mcp.WithDescription("Get the content of a specific file in the vault"),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Path to the file")),
 	)
@@ -238,6 +256,8 @@ func GetFileHandler(client *obsidian.Client) server.ToolHandlerFunc {
 func ListFilesTool() mcp.Tool {
 	return mcp.NewTool("obsidian_list_files",
 		mcp.WithReadOnlyHintAnnotation(true),
+		mcp.WithDestructiveHintAnnotation(false),
+		mcp.WithIdempotentHintAnnotation(true),
 		mcp.WithDescription("List files in a directory"),
 		mcp.WithString("path", mcp.Description("Directory path (empty for root)")),
 	)
@@ -262,6 +282,8 @@ func ListFilesHandler(client *obsidian.Client) server.ToolHandlerFunc {
 // CreateOrUpdateFileTool returns the tool definition
 func CreateOrUpdateFileTool() mcp.Tool {
 	return mcp.NewTool("obsidian_create_or_update_file",
+		mcp.WithDestructiveHintAnnotation(false),
+		mcp.WithIdempotentHintAnnotation(true),
 		mcp.WithDescription("Create a new file or update an existing one"),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Path to the file")),
 		mcp.WithString("content", mcp.Required(), mcp.Description("Content of the file")),
@@ -286,6 +308,8 @@ func CreateOrUpdateFileHandler(client *obsidian.Client) server.ToolHandlerFunc {
 // OpenFileTool returns the tool definition
 func OpenFileTool() mcp.Tool {
 	return mcp.NewTool("obsidian_open_file",
+		mcp.WithDestructiveHintAnnotation(false),
+		mcp.WithIdempotentHintAnnotation(true),
 		mcp.WithDescription("Open a file in Obsidian UI"),
 		mcp.WithString("path", mcp.Required(), mcp.Description("Path to the file")),
 		mcp.WithBoolean("new_leaf", mcp.Description("Open in a new leaf (tab)")),

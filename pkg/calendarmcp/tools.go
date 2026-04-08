@@ -40,6 +40,8 @@ func checkCalendarAccess(calendarID string, config map[string][]string) error {
 func CalendarListTool() mcp.Tool {
 	return mcp.NewTool("calendar_list",
 		mcp.WithReadOnlyHintAnnotation(true),
+		mcp.WithDestructiveHintAnnotation(false),
+		mcp.WithIdempotentHintAnnotation(true),
 		mcp.WithDescription("List available calendars."),
 	)
 }
@@ -78,6 +80,8 @@ func CalendarListHandler(client calendar.API, config map[string][]string) func(c
 func CalendarListEventsTool() mcp.Tool {
 	return mcp.NewTool("calendar_list_events",
 		mcp.WithReadOnlyHintAnnotation(true),
+		mcp.WithDestructiveHintAnnotation(false),
+		mcp.WithIdempotentHintAnnotation(true),
 		mcp.WithDescription("List upcoming events from a specific calendar."),
 		mcp.WithString("calendar", mcp.Description("The calendar ID to list events from (default: 'primary').")),
 		mcp.WithString("timeMin", mcp.Description("Lower bound (exclusive) for an event's end time to filter by. RFC3339 format. Default is now.")),
@@ -131,6 +135,9 @@ func CalendarListEventsHandler(client calendar.API, config map[string][]string) 
 
 func CalendarCreateEventTool() mcp.Tool {
 	return mcp.NewTool("calendar_create_event",
+		mcp.WithReadOnlyHintAnnotation(false),
+		mcp.WithDestructiveHintAnnotation(false),
+		mcp.WithIdempotentHintAnnotation(false),
 		mcp.WithDescription("Create a new event in a specific calendar."),
 		mcp.WithString("calendar", mcp.Description("The calendar ID to create the event in (default: 'primary').")),
 		mcp.WithString("summary", mcp.Required(), mcp.Description("Title of the event.")),
@@ -247,6 +254,8 @@ func CalendarCreateEventHandler(client calendar.API, config map[string][]string)
 
 func CalendarPatchEventTool() mcp.Tool {
 	return mcp.NewTool("calendar_patch_event",
+		mcp.WithDestructiveHintAnnotation(true),
+		mcp.WithIdempotentHintAnnotation(true),
 		mcp.WithDescription("Update/Patch an existing event in a specific calendar."),
 		mcp.WithString("calendar", mcp.Description("The calendar ID (default: 'primary').")),
 		mcp.WithString("eventId", mcp.Required(), mcp.Description("The ID of the event to update.")),
@@ -333,6 +342,8 @@ func CalendarPatchEventHandler(client calendar.API, config map[string][]string) 
 
 func CalendarDeleteEventTool() mcp.Tool {
 	return mcp.NewTool("calendar_delete_event",
+		mcp.WithDestructiveHintAnnotation(true),
+		mcp.WithIdempotentHintAnnotation(true),
 		mcp.WithDescription("Delete an event from a specific calendar."),
 		mcp.WithString("calendar", mcp.Description("The calendar ID (default: 'primary').")),
 		mcp.WithString("eventId", mcp.Required(), mcp.Description("The ID of the event to delete.")),
@@ -370,6 +381,8 @@ func CalendarDeleteEventHandler(client calendar.API, config map[string][]string)
 
 func CalendarMoveEventTool() mcp.Tool {
 	return mcp.NewTool("calendar_move_event",
+		mcp.WithDestructiveHintAnnotation(false),
+		mcp.WithIdempotentHintAnnotation(true),
 		mcp.WithDescription("Move an event from one calendar to another."),
 		mcp.WithString("calendar", mcp.Description("The source calendar ID (default: 'primary').")),
 		mcp.WithString("eventId", mcp.Required(), mcp.Description("The ID of the event to move.")),
