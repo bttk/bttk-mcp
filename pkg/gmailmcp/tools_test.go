@@ -6,11 +6,12 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/bttk/bttk-mcp/pkg/gmail"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/mcptest"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/api/gmail/v1"
+	gmailv1 "google.golang.org/api/gmail/v1"
 )
 
 var errMessageNotFound = errors.New("message not found")
@@ -18,7 +19,7 @@ var errMessageNotFound = errors.New("message not found")
 // MockGmailClient is a mock implementation of pkg_gmail.GmailAPI
 type MockGmailClient struct {
 	SearchMessagesFunc func(query string, maxResults int64) ([]*gmail.Message, error)
-	GetMessageFunc     func(id string) (*gmail.Message, error)
+	GetMessageFunc     func(id string) (*gmailv1.Message, error)
 }
 
 func (m *MockGmailClient) SearchMessages(query string, maxResults int64) ([]*gmail.Message, error) {
@@ -28,7 +29,7 @@ func (m *MockGmailClient) SearchMessages(query string, maxResults int64) ([]*gma
 	return nil, nil
 }
 
-func (m *MockGmailClient) GetMessage(id string) (*gmail.Message, error) {
+func (m *MockGmailClient) GetMessage(id string) (*gmailv1.Message, error) {
 	if m.GetMessageFunc != nil {
 		return m.GetMessageFunc(id)
 	}
@@ -41,17 +42,13 @@ func TestGmailSearch(t *testing.T) {
 			if query == "test" {
 				return []*gmail.Message{
 					{
-						Id:       "123",
-						ThreadId: "t123",
+						ID:       "123",
+						ThreadID: "t123",
 						Snippet:  "Verification code...",
-						Payload: &gmail.MessagePart{
-							Headers: []*gmail.MessagePartHeader{
-								{Name: "To", Value: "me@example.com"},
-								{Name: "From", Value: "noreply@google.com"},
-							},
-						},
+						To:       "me@example.com",
+						From:     "noreply@google.com",
 					},
-					{Id: "124", ThreadId: "t124"},
+					{ID: "124", ThreadID: "t124"},
 				}, nil
 			}
 			return []*gmail.Message{}, nil
@@ -83,25 +80,25 @@ func TestGmailSearch(t *testing.T) {
 	assert.Contains(t, text.Text, `"count":2`)
 	assert.Contains(t, text.Text, `"id":"123"`)
 	assert.Contains(t, text.Text, `"snippet":"Verification code..."`)
-	assert.Contains(t, text.Text, `"name":"To","value":"me@example.com"`)
-	assert.Contains(t, text.Text, `"name":"From","value":"noreply@google.com"`)
+	assert.Contains(t, text.Text, `"to":"me@example.com"`)
+	assert.Contains(t, text.Text, `"from":"noreply@google.com"`)
 }
 
 func TestGmailRead(t *testing.T) {
 	mockClient := &MockGmailClient{
-		GetMessageFunc: func(id string) (*gmail.Message, error) {
+		GetMessageFunc: func(id string) (*gmailv1.Message, error) {
 			if id == "123" {
-				return &gmail.Message{
+				return &gmailv1.Message{
 					Id:       "123",
 					ThreadId: "t123",
 					Snippet:  "Hello world",
-					Payload: &gmail.MessagePart{
+					Payload: &gmailv1.MessagePart{
 						MimeType: "text/plain",
-						Headers: []*gmail.MessagePartHeader{
+						Headers: []*gmailv1.MessagePartHeader{
 							{Name: "Subject", Value: "Test Email"},
 							{Name: "From", Value: "sender@example.com"},
 						},
-						Body: &gmail.MessagePartBody{
+						Body: &gmailv1.MessagePartBody{
 							Data: base64.URLEncoding.EncodeToString([]byte("This is the decoded body content.")),
 						},
 					},

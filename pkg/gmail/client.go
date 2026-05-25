@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/bttk/bttk-mcp/internal/googleapi"
 	"google.golang.org/api/gmail/v1"
@@ -30,10 +31,22 @@ type Client struct {
 	Service *gmail.Service
 }
 
+// Message represents a simplified Gmail message.
+type Message struct {
+	ID       string `json:"id,omitempty"`
+	ThreadID string `json:"threadId,omitempty"`
+	Snippet  string `json:"snippet,omitempty"`
+	Date     string `json:"date,omitempty"`
+	From     string `json:"from,omitempty"`
+	To       string `json:"to,omitempty"`
+	Subject  string `json:"subject,omitempty"`
+	Cc       string `json:"cc,omitempty"`
+}
+
 // API defines the interface for interacting with Gmail.
 // This allows for mocking in tests.
 type API interface {
-	SearchMessages(query string, maxResults int64) ([]*gmail.Message, error)
+	SearchMessages(query string, maxResults int64) ([]*Message, error)
 	GetMessage(id string) (*gmail.Message, error)
 }
 
@@ -61,25 +74,53 @@ func NewClient(credentialsPath, tokenPath string) (*Client, error) {
 
 // SearchMessages searches for messages matching the query.
 // It returns a list of simplified message details.
-func (c *Client) SearchMessages(query string, maxResults int64) ([]*gmail.Message, error) {
+func (c *Client) SearchMessages(query string, maxResults int64) ([]*Message, error) {
 	user := "me"
 	r, err := c.Service.Users.Messages.List(user).Q(query).MaxResults(maxResults).Do()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrListMessages, err)
 	}
 
-	messages := make([]*gmail.Message, 0, len(r.Messages))
+	messages := make([]*Message, 0, len(r.Messages))
 	for _, msg := range r.Messages {
 		m, err := c.Service.Users.Messages.Get(user, msg.Id).
 			Format("metadata").
-			MetadataHeaders("To", "From").
-			Fields("id", "threadId", "snippet", "internalDate", "payload(headers)").
+			MetadataHeaders("To", "From", "Subject", "Date", "Cc").
+			Fields("id", "threadId", "snippet", "payload(headers)").
 			Do()
 		if err != nil {
 			log.Printf("failed to get message details for ID %s: %v", msg.Id, err)
 			continue
 		}
-		messages = append(messages, m)
+
+		var date, from, to, subject, cc string
+		if m.Payload != nil {
+			for _, h := range m.Payload.Headers {
+				switch strings.ToLower(h.Name) {
+				case "date":
+					date = h.Value
+				case "from":
+					from = h.Value
+				case "to":
+					to = h.Value
+				case "subject":
+					subject = h.Value
+				case "cc":
+					cc = h.Value
+				}
+			}
+		}
+
+		messages = append(messages, &Message{
+			ID:       m.Id,
+			ThreadID: m.ThreadId,
+			Snippet:  m.Snippet,
+			Date:     date,
+			From:     from,
+			To:       to,
+			Subject:  subject,
+			Cc:       cc,
+		})
 	}
 	return messages, nil
 }
