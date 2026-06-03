@@ -227,6 +227,8 @@ var allTools = []struct {
 }
 
 func main() {
+	initLogger()
+
 	// Custom flag usage
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
@@ -400,6 +402,7 @@ func runServer(cfg *config.Config, forceStdio bool, configPath string) {
 		"BTTK Combined MCP Server",
 		"1.0.0",
 		server.WithLogging(),
+		server.WithHooks(setupHooks()),
 	)
 
 	// Initialize reloadable client instances
