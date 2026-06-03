@@ -138,9 +138,16 @@ func WithCertificate(path string) Option {
 		caCertPool.AppendCertsFromPEM(caCert)
 
 		if c.http.Transport == nil {
-			c.http.Transport = http.DefaultTransport.(*http.Transport).Clone()
+			if dt, ok := http.DefaultTransport.(*http.Transport); ok {
+				c.http.Transport = dt.Clone()
+			} else {
+				c.http.Transport = &http.Transport{}
+			}
 		}
 		if t, ok := c.http.Transport.(*http.Transport); ok {
+			if t.TLSClientConfig == nil {
+				t.TLSClientConfig = &tls.Config{} //nolint:gosec // Intentional
+			}
 			t.TLSClientConfig.RootCAs = caCertPool
 		}
 	}

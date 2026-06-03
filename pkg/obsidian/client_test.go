@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -270,4 +271,55 @@ func TestClient_Vault_Move(t *testing.T) {
 
 	err = client.Vault.Move(context.Background(), "source.md", "destination.md")
 	require.NoError(t, err)
+}
+
+type mockRoundTripper struct{}
+
+func (m *mockRoundTripper) RoundTrip(_ *http.Request) (*http.Response, error) {
+	return nil, nil
+}
+
+func TestWithCertificate(t *testing.T) {
+	// Create a temp file to act as the certificate
+	tmpFile, err := os.CreateTemp("", "dummy-cert")
+	require.NoError(t, err)
+	defer os.Remove(tmpFile.Name())
+	defer tmpFile.Close()
+
+	_, err = tmpFile.Write([]byte("-----BEGIN CERTIFICATE-----\nDummy\n-----END CERTIFICATE-----"))
+	require.NoError(t, err)
+
+	t.Run("nil transport", func(t *testing.T) {
+		// New client automatically initializes client.http and leaves client.http.Transport as nil
+		c, err := NewClient("http://localhost", "token", WithCertificate(tmpFile.Name()))
+		require.NoError(t, err)
+		assert.NotNil(t, c.http.Transport)
+
+		transport, ok := c.http.Transport.(*http.Transport)
+		require.True(t, ok)
+		assert.NotNil(t, transport.TLSClientConfig)
+		assert.NotNil(t, transport.TLSClientConfig.RootCAs)
+	})
+
+	t.Run("non-nil transport with nil TLSClientConfig", func(t *testing.T) {
+		customHTTP := &http.Client{
+			Transport: &http.Transport{},
+		}
+		c, err := NewClient("http://localhost", "token", WithHTTPClient(customHTTP), WithCertificate(tmpFile.Name()))
+		require.NoError(t, err)
+
+		transport, ok := c.http.Transport.(*http.Transport)
+		require.True(t, ok)
+		assert.NotNil(t, transport.TLSClientConfig)
+		assert.NotNil(t, transport.TLSClientConfig.RootCAs)
+	})
+
+	t.Run("custom round tripper should not panic", func(t *testing.T) {
+		customHTTP := &http.Client{
+			Transport: &mockRoundTripper{},
+		}
+		c, err := NewClient("http://localhost", "token", WithHTTPClient(customHTTP), WithCertificate(tmpFile.Name()))
+		require.NoError(t, err)
+		assert.IsType(t, &mockRoundTripper{}, c.http.Transport)
+	})
 }
