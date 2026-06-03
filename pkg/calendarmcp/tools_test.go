@@ -99,11 +99,13 @@ func TestCalendarListTool(t *testing.T) {
 	// Verify JSON content
 	textContent, ok := res.Content[0].(mcp.TextContent)
 	require.True(t, ok)
-	var resultEntries []*googleCalendar.CalendarListEntry
-	err = json.Unmarshal([]byte(textContent.Text), &resultEntries)
+	var result struct {
+		Calendars []*googleCalendar.CalendarListEntry `json:"calendars"`
+	}
+	err = json.Unmarshal([]byte(textContent.Text), &result)
 	require.NoError(t, err)
-	assert.Len(t, resultEntries, 2)
-	assert.Equal(t, "cal1", resultEntries[0].Id)
+	assert.Len(t, result.Calendars, 2)
+	assert.Equal(t, "cal1", result.Calendars[0].Id)
 }
 
 func TestCalendarListToolfiltered(t *testing.T) {
@@ -137,11 +139,13 @@ func TestCalendarListToolfiltered(t *testing.T) {
 	assert.False(t, res.IsError)
 	textContent, ok := res.Content[0].(mcp.TextContent)
 	require.True(t, ok)
-	var resultEntries []*googleCalendar.CalendarListEntry
-	err = json.Unmarshal([]byte(textContent.Text), &resultEntries)
+	var result struct {
+		Calendars []*googleCalendar.CalendarListEntry `json:"calendars"`
+	}
+	err = json.Unmarshal([]byte(textContent.Text), &result)
 	require.NoError(t, err)
-	assert.Len(t, resultEntries, 1)
-	assert.Equal(t, "cal1", resultEntries[0].Id)
+	assert.Len(t, result.Calendars, 1)
+	assert.Equal(t, "cal1", result.Calendars[0].Id)
 }
 
 func TestCalendarListEventsTool(t *testing.T) {
@@ -173,11 +177,13 @@ func TestCalendarListEventsTool(t *testing.T) {
 
 	textContent, ok := res.Content[0].(mcp.TextContent)
 	require.True(t, ok)
-	var resultEvents []*googleCalendar.Event
-	err = json.Unmarshal([]byte(textContent.Text), &resultEvents)
+	var result struct {
+		Events []*googleCalendar.Event `json:"events"`
+	}
+	err = json.Unmarshal([]byte(textContent.Text), &result)
 	require.NoError(t, err)
-	assert.Len(t, resultEvents, 1)
-	assert.Equal(t, "evt1", resultEvents[0].Id)
+	assert.Len(t, result.Events, 1)
+	assert.Equal(t, "evt1", result.Events[0].Id)
 }
 
 func TestCalendarListEventsTool_Blocked(t *testing.T) {

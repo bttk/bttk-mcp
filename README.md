@@ -87,15 +87,18 @@ Tools are configured via a JSON configuration file (default: `~/.config/bttk-mcp
 ```json
 {
     "obsidian": {
+        "enabled": true,
         "url": "https://127.0.0.1:27124",
         "cert": "./obsidian.crt",
         "apikey": "YOUR_OBSIDIAN_API_KEY"
     },
     "gmail": {
+        "enabled": true,
         "credentials_file": "./credentials.json",
         "token_file": "./token.json"
     },
     "calendar": {
+        "enabled": true,
         "credentials_file": "./credentials.json",
         "token_file": "./token.json",
         "calendars": [
@@ -105,6 +108,7 @@ Tools are configured via a JSON configuration file (default: `~/.config/bttk-mcp
         ]
     },
     "mcp": {
+        "address": "localhost:2885",
         "tools": {
             "get_active_file": true,
             "search_simple": true,
@@ -122,36 +126,75 @@ Tools are configured via a JSON configuration file (default: `~/.config/bttk-mcp
 
 ### Usage with MCP Client
 
-Add the built binaries to your MCP client configuration (e.g., Gemini CLI `settings.json`):
+Set the server address in your MCP client configuration (e.g., Gemini CLI `~/.gemini/settings.json`):
 
 ```json
 {
-  "tools": {
-    "allowed": [
-      "obsidian_get_active_file",
-      "obsidian_search_simple",
-      "obsidian_search_json_logic",
-      "obsidian_search_dql"
-      "obsidian_get_file",
-      "obsidian_list_files",
-      "calendar_list",
-      "calendar_list_events"
-    ]
-  },
   "mcpServers": {
-    "obsidian": {
-      "command": "obsidianmcp",
-      "trust": false
-    },
-    "gmail": {
-      "command": "gmailmcp",
-      "trust": true
-    },
-    "calendar": {
-      "command": "calendarmcp",
-      "trust": false
+    "bttk": {
+      "address": "http://localhost:2885/mcp"
     }
   }
 }
 ```
 
+Or in `~/.gemini/antigravity-cli/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "bttk": {
+      "serverURL": "http://localhost:2885/mcp"
+    }
+  }
+}
+```
+
+## Combined MCP Server (`cmd/bttkmcp`)
+
+The combined MCP server merges Gmail, Google Calendar, and Obsidian tools into a single running process. It can run in standard input/output (stdio) mode, or as an HTTP server using Server-Sent Events (SSE) if the `address` field is specified in the `mcp` section of your configuration.
+
+### Installation
+
+To compile `bttkmcp` and copy the binary and the systemd unit file:
+
+```bash
+make install
+```
+
+This command will:
+1. Compile the binaries.
+2. Copy the `bttkmcp` binary to `~/bin/`.
+3. Copy the `bttkmcp.service` configuration file to `~/.config/systemd/user/` (without overwriting if it already exists).
+
+### Authentication
+
+Verify API authentication for Gmail and Google Calendar before starting the service:
+
+```bash
+~/bin/bttkmcp auth
+```
+
+### Running as a systemd User Service
+
+To run the combined server as a background service:
+
+```bash
+# Reload systemd user configuration
+systemctl --user daemon-reload
+
+# Enable and start the service
+systemctl --user enable --now bttkmcp.service
+
+# View status
+systemctl --user status bttkmcp.service
+
+# Inspect live logs
+journalctl --user -u bttkmcp.service -f
+```
+
+*(Optional)* Enable user lingering so the service continues running in the background when your terminal/SSH session disconnects:
+
+```bash
+loginctl enable-linger $USER
+```

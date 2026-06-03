@@ -1,10 +1,12 @@
 {
     "obsidian": {
+        "enabled": true,
         "url": "https://127.0.0.1:27124",
         "cert": "obsidian.crt",
         "apikey": "abc123"
     },
     "mcp": {
+        "address": "localhost:2885",
         "tools": {
             "get_active_file": true,
             "append_active_file": true,
@@ -20,10 +22,14 @@
         }
     },
     "calendar": {
+        "enabled": true,
         "calendars": [
             "primary",
             "example@gmail.com",
             "abcdefghijkl@group.calendar.google.com"
         ]
+    },
+    "gmail": {
+        "enabled": true
     }
 }

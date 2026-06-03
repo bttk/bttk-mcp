@@ -1,0 +1,14 @@
+[Unit]
+Description=BTTK Combined MCP Server
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=%h/bin/bttkmcp
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

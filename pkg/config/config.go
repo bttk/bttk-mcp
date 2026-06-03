@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -11,9 +12,10 @@ import (
 // Config represents the configuration for the Obsidian Local REST API.
 type Config struct {
 	Obsidian struct {
-		URL    string `json:"url"`
-		Cert   string `json:"cert"`
-		APIKey string `json:"apikey"`
+		Enabled bool   `json:"enabled"`
+		URL     string `json:"url"`
+		Cert    string `json:"cert"`
+		APIKey  string `json:"apikey"`
 	} `json:"obsidian"`
 	Gmail struct {
 		Enabled         bool   `json:"enabled"`
@@ -27,7 +29,8 @@ type Config struct {
 		Calendars       []string `json:"calendars"`
 	} `json:"calendar"`
 	MCP struct {
-		Tools map[string]bool `json:"tools"`
+		Address string          `json:"address"`
+		Tools   map[string]bool `json:"tools"`
 	} `json:"mcp"`
 }
 
@@ -41,6 +44,8 @@ func Load(path string) (*Config, error) {
 			return nil, err
 		}
 	}
+
+	log.Printf("Using config file: %s", path)
 
 	f, err := os.Open(path)
 	if err != nil {

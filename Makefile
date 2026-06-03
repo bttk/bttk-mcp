@@ -23,6 +23,15 @@ test-build: ## Tests whether the code compiles
 
 build: out/bin ## Builds all binaries
 
+.PHONY: install
+install: build
+## Installs bttkmcp to ~/bin
+	@mkdir -p $(HOME)/bin
+	@cp -pv out/bin/bttkmcp $(HOME)/bin/
+## Installs bttkmcp.service to ~/.config/systemd/user if it doesn't exist
+	@mkdir -p $(HOME)/.config/systemd/user
+	@cp -pv --update=none bttkmcp.service $(HOME)/.config/systemd/user/
+
 GO_BUILD = mkdir -pv "$(@)" && go build -ldflags="-w -s" -o "$(@)" ./...
 .PHONY: out/bin
 out/bin:

@@ -64,11 +64,15 @@ func CalendarListHandler(client calendar.API, config map[string][]string) func(c
 			filteredList = append(filteredList, item)
 		}
 
-		if len(filteredList) == 0 {
-			return mcp.NewToolResultText("[]"), nil
+		if filteredList == nil {
+			filteredList = []*googleCalendar.CalendarListEntry{}
 		}
 
-		jsonBytes, err := json.Marshal(filteredList)
+		result := map[string]interface{}{
+			"calendars": filteredList,
+		}
+
+		jsonBytes, err := json.Marshal(result)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to marshal calendars to JSON: %v", err)), nil
 		}
@@ -124,7 +128,15 @@ func CalendarListEventsHandler(client calendar.API, config map[string][]string) 
 			return mcp.NewToolResultError(fmt.Sprintf("failed to list events: %v", err)), nil
 		}
 
-		jsonBytes, err := json.Marshal(events)
+		if events == nil {
+			events = []*googleCalendar.Event{}
+		}
+
+		result := map[string]interface{}{
+			"events": events,
+		}
+
+		jsonBytes, err := json.Marshal(result)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to marshal events to JSON: %v", err)), nil
 		}
