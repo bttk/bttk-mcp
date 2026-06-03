@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -18,6 +19,7 @@ var ErrAPI = errors.New("API error")
 
 // Client is the main entry point for the Obsidian Local REST API client.
 type Client struct {
+	mu      sync.RWMutex
 	baseURL *url.URL
 	token   string
 	http    *http.Client
@@ -59,6 +61,46 @@ func NewClient(baseURL, token string, opts ...Option) (*Client, error) {
 	c.initializeServices()
 
 	return c, nil
+}
+
+// BaseURL returns a copy of the base URL of the client in a thread-safe manner.
+func (c *Client) BaseURL() *url.URL {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if c.baseURL == nil {
+		return nil
+	}
+	u := *c.baseURL
+	return &u
+}
+
+// Update re-configures the client thread-safely in-place.
+func (c *Client) Update(baseURL, token string, opts ...Option) error {
+	if !strings.HasSuffix(baseURL, "/") {
+		baseURL += "/"
+	}
+	u, err := url.Parse(baseURL)
+	if err != nil {
+		return err
+	}
+
+	tempClient := &Client{
+		baseURL: u,
+		token:   token,
+		http: &http.Client{
+			Timeout: 10 * time.Second, //nolint:mnd
+		},
+	}
+	for _, opt := range opts {
+		opt(tempClient)
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.baseURL = tempClient.baseURL
+	c.token = tempClient.token
+	c.http = tempClient.http
+	return nil
 }
 
 // WithHTTPClient allows providing a custom HTTP client.
@@ -114,8 +156,13 @@ func (c *Client) initializeServices() {
 }
 
 func (c *Client) do(req *http.Request, v interface{}) error {
-	req.Header.Set("Authorization", "Bearer "+c.token)
-	resp, err := c.http.Do(req)
+	c.mu.RLock()
+	token := c.token
+	httpClient := c.http
+	c.mu.RUnlock()
+
+	req.Header.Set("Authorization", "Bearer "+token)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return err
 	}

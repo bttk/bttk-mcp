@@ -19,11 +19,203 @@ import (
 	"github.com/bttk/bttk-mcp/pkg/gmailmcp"
 	"github.com/bttk/bttk-mcp/pkg/obsidian"
 	"github.com/bttk/bttk-mcp/pkg/obsidianmcp"
+	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/mark3labs/mcp-go/util"
 )
 
 const shutdownTimeout = 5 * time.Second
+
+//nolint:gochecknoglobals
+var allTools = []struct {
+	name        string // name in cfg.MCP.Tools config
+	mcpName     string // actual tool name registered
+	serviceName string // "obsidian", "calendar", "gmail"
+	getTool     func() mcp.Tool
+	getHandler  func(
+		obsidianClient *obsidian.Client,
+		calendarClient *calendar.Client,
+		calendarConfig *calendarmcp.CalendarConfig,
+		gmailClient *gmail.Client,
+	) server.ToolHandlerFunc
+}{
+	// Obsidian Tools
+	{
+		name:        "get_active_file",
+		mcpName:     "obsidian_get_active_file",
+		serviceName: "obsidian",
+		getTool:     obsidianmcp.GetActiveFileTool,
+		getHandler: func(obs *obsidian.Client, _ *calendar.Client, _ *calendarmcp.CalendarConfig, _ *gmail.Client) server.ToolHandlerFunc {
+			return obsidianmcp.GetActiveFileHandler(obs)
+		},
+	},
+	{
+		name:        "append_active_file",
+		mcpName:     "obsidian_append_active_file",
+		serviceName: "obsidian",
+		getTool:     obsidianmcp.AppendActiveFileTool,
+		getHandler: func(obs *obsidian.Client, _ *calendar.Client, _ *calendarmcp.CalendarConfig, _ *gmail.Client) server.ToolHandlerFunc {
+			return obsidianmcp.AppendActiveFileHandler(obs)
+		},
+	},
+	{
+		name:        "patch_active_file",
+		mcpName:     "obsidian_patch_active_file",
+		serviceName: "obsidian",
+		getTool:     obsidianmcp.PatchActiveFileTool,
+		getHandler: func(obs *obsidian.Client, _ *calendar.Client, _ *calendarmcp.CalendarConfig, _ *gmail.Client) server.ToolHandlerFunc {
+			return obsidianmcp.PatchActiveFileHandler(obs)
+		},
+	},
+	{
+		name:        "search_simple",
+		mcpName:     "obsidian_search_simple",
+		serviceName: "obsidian",
+		getTool:     obsidianmcp.SearchSimpleTool,
+		getHandler: func(obs *obsidian.Client, _ *calendar.Client, _ *calendarmcp.CalendarConfig, _ *gmail.Client) server.ToolHandlerFunc {
+			return obsidianmcp.SearchSimpleHandler(obs)
+		},
+	},
+	{
+		name:        "search_json_logic",
+		mcpName:     "obsidian_search_json_logic",
+		serviceName: "obsidian",
+		getTool:     obsidianmcp.SearchJSONLogicTool,
+		getHandler: func(obs *obsidian.Client, _ *calendar.Client, _ *calendarmcp.CalendarConfig, _ *gmail.Client) server.ToolHandlerFunc {
+			return obsidianmcp.SearchJSONLogicHandler(obs)
+		},
+	},
+	{
+		name:        "search_dql",
+		mcpName:     "obsidian_search_dql",
+		serviceName: "obsidian",
+		getTool:     obsidianmcp.SearchDQLTool,
+		getHandler: func(obs *obsidian.Client, _ *calendar.Client, _ *calendarmcp.CalendarConfig, _ *gmail.Client) server.ToolHandlerFunc {
+			return obsidianmcp.SearchDQLHandler(obs)
+		},
+	},
+	{
+		name:        "get_daily_note",
+		mcpName:     "obsidian_get_daily_note",
+		serviceName: "obsidian",
+		getTool:     obsidianmcp.GetDailyNoteTool,
+		getHandler: func(obs *obsidian.Client, _ *calendar.Client, _ *calendarmcp.CalendarConfig, _ *gmail.Client) server.ToolHandlerFunc {
+			return obsidianmcp.GetDailyNoteHandler(obs)
+		},
+	},
+	{
+		name:        "get_file",
+		mcpName:     "obsidian_get_file",
+		serviceName: "obsidian",
+		getTool:     obsidianmcp.GetFileTool,
+		getHandler: func(obs *obsidian.Client, _ *calendar.Client, _ *calendarmcp.CalendarConfig, _ *gmail.Client) server.ToolHandlerFunc {
+			return obsidianmcp.GetFileHandler(obs)
+		},
+	},
+	{
+		name:        "list_files",
+		mcpName:     "obsidian_list_files",
+		serviceName: "obsidian",
+		getTool:     obsidianmcp.ListFilesTool,
+		getHandler: func(obs *obsidian.Client, _ *calendar.Client, _ *calendarmcp.CalendarConfig, _ *gmail.Client) server.ToolHandlerFunc {
+			return obsidianmcp.ListFilesHandler(obs)
+		},
+	},
+	{
+		name:        "create_or_update_file",
+		mcpName:     "obsidian_create_or_update_file",
+		serviceName: "obsidian",
+		getTool:     obsidianmcp.CreateOrUpdateFileTool,
+		getHandler: func(obs *obsidian.Client, _ *calendar.Client, _ *calendarmcp.CalendarConfig, _ *gmail.Client) server.ToolHandlerFunc {
+			return obsidianmcp.CreateOrUpdateFileHandler(obs)
+		},
+	},
+	{
+		name:        "open_file",
+		mcpName:     "obsidian_open_file",
+		serviceName: "obsidian",
+		getTool:     obsidianmcp.OpenFileTool,
+		getHandler: func(obs *obsidian.Client, _ *calendar.Client, _ *calendarmcp.CalendarConfig, _ *gmail.Client) server.ToolHandlerFunc {
+			return obsidianmcp.OpenFileHandler(obs)
+		},
+	},
+
+	// Calendar Tools
+	{
+		name:        "calendar_list",
+		mcpName:     "calendar_list",
+		serviceName: "calendar",
+		getTool:     calendarmcp.CalendarListTool,
+		getHandler: func(_ *obsidian.Client, cal *calendar.Client, cc *calendarmcp.CalendarConfig, _ *gmail.Client) server.ToolHandlerFunc {
+			return calendarmcp.CalendarListHandler(cal, cc)
+		},
+	},
+	{
+		name:        "calendar_list_events",
+		mcpName:     "calendar_list_events",
+		serviceName: "calendar",
+		getTool:     calendarmcp.CalendarListEventsTool,
+		getHandler: func(_ *obsidian.Client, cal *calendar.Client, cc *calendarmcp.CalendarConfig, _ *gmail.Client) server.ToolHandlerFunc {
+			return calendarmcp.CalendarListEventsHandler(cal, cc)
+		},
+	},
+	{
+		name:        "calendar_create_event",
+		mcpName:     "calendar_create_event",
+		serviceName: "calendar",
+		getTool:     calendarmcp.CalendarCreateEventTool,
+		getHandler: func(_ *obsidian.Client, cal *calendar.Client, cc *calendarmcp.CalendarConfig, _ *gmail.Client) server.ToolHandlerFunc {
+			return calendarmcp.CalendarCreateEventHandler(cal, cc)
+		},
+	},
+	{
+		name:        "calendar_patch_event",
+		mcpName:     "calendar_patch_event",
+		serviceName: "calendar",
+		getTool:     calendarmcp.CalendarPatchEventTool,
+		getHandler: func(_ *obsidian.Client, cal *calendar.Client, cc *calendarmcp.CalendarConfig, _ *gmail.Client) server.ToolHandlerFunc {
+			return calendarmcp.CalendarPatchEventHandler(cal, cc)
+		},
+	},
+	{
+		name:        "calendar_delete_event",
+		mcpName:     "calendar_delete_event",
+		serviceName: "calendar",
+		getTool:     calendarmcp.CalendarDeleteEventTool,
+		getHandler: func(_ *obsidian.Client, cal *calendar.Client, cc *calendarmcp.CalendarConfig, _ *gmail.Client) server.ToolHandlerFunc {
+			return calendarmcp.CalendarDeleteEventHandler(cal, cc)
+		},
+	},
+	{
+		name:        "calendar_move_event",
+		mcpName:     "calendar_move_event",
+		serviceName: "calendar",
+		getTool:     calendarmcp.CalendarMoveEventTool,
+		getHandler: func(_ *obsidian.Client, cal *calendar.Client, cc *calendarmcp.CalendarConfig, _ *gmail.Client) server.ToolHandlerFunc {
+			return calendarmcp.CalendarMoveEventHandler(cal, cc)
+		},
+	},
+
+	// Gmail Tools
+	{
+		name:        "gmail_search",
+		mcpName:     "gmail_search",
+		serviceName: "gmail",
+		getTool:     gmailmcp.GmailSearchTool,
+		getHandler: func(_ *obsidian.Client, _ *calendar.Client, _ *calendarmcp.CalendarConfig, gm *gmail.Client) server.ToolHandlerFunc {
+			return gmailmcp.GmailSearchHandler(gm)
+		},
+	},
+	{
+		name:        "gmail_read",
+		mcpName:     "gmail_read",
+		serviceName: "gmail",
+		getTool:     gmailmcp.GmailReadTool,
+		getHandler: func(_ *obsidian.Client, _ *calendar.Client, _ *calendarmcp.CalendarConfig, gm *gmail.Client) server.ToolHandlerFunc {
+			return gmailmcp.GmailReadHandler(gm)
+		},
+	},
+}
 
 func main() {
 	// Custom flag usage
@@ -59,7 +251,7 @@ func main() {
 	}
 
 	// Default behavior: run MCP Server
-	runServer(cfg, *forceStdio)
+	runServer(cfg, *forceStdio, *configPath)
 }
 
 func runAuth(cfg *config.Config) {
@@ -97,27 +289,153 @@ func runAuth(cfg *config.Config) {
 	}
 }
 
-func runServer(cfg *config.Config, forceStdio bool) {
+func updateObsidian(client *obsidian.Client, cfg *config.Config) {
+	if !cfg.Obsidian.Enabled {
+		log.Println("Obsidian is disabled in config")
+		_ = client.Update("http://localhost", "")
+		return
+	}
+	if cfg.Obsidian.URL == "" {
+		log.Println("Warning: Obsidian url not configured")
+		_ = client.Update("http://localhost", "")
+		return
+	}
+
+	log.Println("Initializing/Updating Obsidian service client...")
+	var opts []obsidian.Option
+	if cfg.Obsidian.Cert != "" {
+		opts = append(opts, obsidian.WithCertificate(cfg.Obsidian.Cert))
+	} else {
+		opts = append(opts, obsidian.WithInsecureTLS())
+	}
+	err := client.Update(cfg.Obsidian.URL, cfg.Obsidian.APIKey, opts...)
+	if err != nil {
+		log.Printf("Failed to update Obsidian client: %v", err)
+	}
+}
+
+func updateCalendar(client *calendar.Client, cfg *config.Config) {
+	if !cfg.Calendar.Enabled {
+		log.Println("Google Calendar is disabled in config")
+		client.Disable()
+		return
+	}
+
+	log.Println("Initializing/Updating Google Calendar service client...")
+	credPath, tokenPath := cfg.Calendar.CredentialsFile, cfg.Calendar.TokenFile
+	err := client.Update(credPath, tokenPath)
+	if err != nil {
+		log.Printf("Failed to update Google Calendar client: %v", err)
+	}
+}
+
+func updateGmail(client *gmail.Client, cfg *config.Config) {
+	if !cfg.Gmail.Enabled {
+		log.Println("Gmail is disabled in config")
+		client.Disable()
+		return
+	}
+
+	log.Println("Initializing/Updating Gmail service client...")
+	err := client.Update(cfg.Gmail.CredentialsFile, cfg.Gmail.TokenFile)
+	if err != nil {
+		log.Printf("Failed to update Gmail client: %v", err)
+	}
+}
+
+func reconcileTools(
+	s *server.MCPServer,
+	cfg *config.Config,
+	obsClient *obsidian.Client,
+	calClient *calendar.Client,
+	calConfig *calendarmcp.CalendarConfig,
+	gmClient *gmail.Client,
+) {
+	currentTools := s.ListTools()
+
+	for _, t := range allTools {
+		serviceEnabled := false
+		switch t.serviceName {
+		case "obsidian":
+			serviceEnabled = cfg.Obsidian.Enabled && cfg.Obsidian.URL != ""
+		case "calendar":
+			serviceEnabled = cfg.Calendar.Enabled
+		case "gmail":
+			serviceEnabled = cfg.Gmail.Enabled
+		}
+
+		toolEnabled := true
+		if cfg.MCP.Tools != nil {
+			if enabled, ok := cfg.MCP.Tools[t.name]; ok {
+				toolEnabled = enabled
+			}
+		}
+
+		shouldRegister := serviceEnabled && toolEnabled
+
+		_, currentlyRegistered := currentTools[t.mcpName]
+
+		if shouldRegister && !currentlyRegistered {
+			log.Printf("Registering tool %s", t.mcpName)
+			s.AddTool(t.getTool(), t.getHandler(obsClient, calClient, calConfig, gmClient))
+		} else if !shouldRegister && currentlyRegistered {
+			log.Printf("Unregistering tool %s", t.mcpName)
+			s.DeleteTools(t.mcpName)
+		}
+	}
+}
+
+func runServer(cfg *config.Config, forceStdio bool, configPath string) {
 	s := server.NewMCPServer(
 		"BTTK Combined MCP Server",
 		"1.0.0",
 		server.WithLogging(),
 	)
 
-	// Helper for tools filtering based on cfg.MCP.Tools config
-	registerTool := func(name string, registerFunc func()) {
-		if cfg.MCP.Tools != nil {
-			if enabled, ok := cfg.MCP.Tools[name]; ok && !enabled {
-				log.Printf("Tool %s explicitly disabled in config, skipping", name)
-				return
-			}
-		}
-		registerFunc()
+	// Initialize reloadable client instances
+	obsidianClient, err := obsidian.NewClient("http://localhost", "")
+	if err != nil {
+		log.Fatalf("Failed to initialize Obsidian client structure: %v", err)
 	}
+	calendarClient := &calendar.Client{}
+	gmailClient := &gmail.Client{}
+	calendarConfig := &calendarmcp.CalendarConfig{}
 
-	setupObsidian(s, cfg, registerTool)
-	setupCalendar(s, cfg, registerTool)
-	setupGmail(s, cfg, registerTool)
+	// Update clients initially
+	updateObsidian(obsidianClient, cfg)
+	updateCalendar(calendarClient, cfg)
+	updateGmail(gmailClient, cfg)
+	calendarConfig.SetAllowedCalendars(cfg.Calendar.Calendars)
+
+	// Reconcile and register tools initially
+	reconcileTools(s, cfg, obsidianClient, calendarClient, calendarConfig, gmailClient)
+
+	// Signal handling for SIGHUP
+	initialAddress := cfg.MCP.Address
+	sigHupChan := make(chan os.Signal, 1)
+	signal.Notify(sigHupChan, syscall.SIGHUP)
+	go func() {
+		for range sigHupChan {
+			log.Println("Received SIGHUP, reloading configuration...")
+			newCfg, err := config.Load(configPath)
+			if err != nil {
+				log.Printf("Error reloading configuration from %s: %v (retaining current config)", configPath, err)
+				continue
+			}
+
+			if newCfg.MCP.Address != initialAddress {
+				log.Printf("Warning: Listen address changed from %s to %s. A server restart is required for this change to take effect.", initialAddress, newCfg.MCP.Address)
+			}
+
+			updateObsidian(obsidianClient, newCfg)
+			updateCalendar(calendarClient, newCfg)
+			updateGmail(gmailClient, newCfg)
+			calendarConfig.SetAllowedCalendars(newCfg.Calendar.Calendars)
+
+			reconcileTools(s, newCfg, obsidianClient, calendarClient, calendarConfig, gmailClient)
+			log.Println("Configuration reloaded successfully!")
+		}
+	}()
 
 	// Determine transport mode
 	listenAddr := cfg.MCP.Address
@@ -133,120 +451,6 @@ func runServer(cfg *config.Config, forceStdio bool) {
 			log.Fatalf("Server error: %v", err)
 		}
 	}
-}
-
-func setupObsidian(s *server.MCPServer, cfg *config.Config, registerTool func(string, func())) {
-	if !cfg.Obsidian.Enabled {
-		log.Println("Warning: Obsidian not enabled in config. Skipping Obsidian tools.")
-		return
-	}
-	if cfg.Obsidian.URL == "" {
-		log.Println("Warning: Obsidian url not configured. Skipping Obsidian tools.")
-		return
-	}
-
-	log.Println("Initializing Obsidian service client...")
-	var opts []obsidian.Option
-	if cfg.Obsidian.Cert != "" {
-		opts = append(opts, obsidian.WithCertificate(cfg.Obsidian.Cert))
-	} else {
-		opts = append(opts, obsidian.WithInsecureTLS())
-	}
-	client, err := obsidian.NewClient(cfg.Obsidian.URL, cfg.Obsidian.APIKey, opts...)
-	if err != nil {
-		log.Fatalf("Failed to create Obsidian client: %v", err)
-	}
-
-	registerTool("get_active_file", func() {
-		s.AddTool(obsidianmcp.GetActiveFileTool(), obsidianmcp.GetActiveFileHandler(client))
-	})
-	registerTool("append_active_file", func() {
-		s.AddTool(obsidianmcp.AppendActiveFileTool(), obsidianmcp.AppendActiveFileHandler(client))
-	})
-	registerTool("patch_active_file", func() {
-		s.AddTool(obsidianmcp.PatchActiveFileTool(), obsidianmcp.PatchActiveFileHandler(client))
-	})
-	registerTool("search_simple", func() {
-		s.AddTool(obsidianmcp.SearchSimpleTool(), obsidianmcp.SearchSimpleHandler(client))
-	})
-	registerTool("search_json_logic", func() {
-		s.AddTool(obsidianmcp.SearchJSONLogicTool(), obsidianmcp.SearchJSONLogicHandler(client))
-	})
-	registerTool("search_dql", func() {
-		s.AddTool(obsidianmcp.SearchDQLTool(), obsidianmcp.SearchDQLHandler(client))
-	})
-	registerTool("get_daily_note", func() {
-		s.AddTool(obsidianmcp.GetDailyNoteTool(), obsidianmcp.GetDailyNoteHandler(client))
-	})
-	registerTool("get_file", func() {
-		s.AddTool(obsidianmcp.GetFileTool(), obsidianmcp.GetFileHandler(client))
-	})
-	registerTool("list_files", func() {
-		s.AddTool(obsidianmcp.ListFilesTool(), obsidianmcp.ListFilesHandler(client))
-	})
-	registerTool("create_or_update_file", func() {
-		s.AddTool(obsidianmcp.CreateOrUpdateFileTool(), obsidianmcp.CreateOrUpdateFileHandler(client))
-	})
-	registerTool("open_file", func() {
-		s.AddTool(obsidianmcp.OpenFileTool(), obsidianmcp.OpenFileHandler(client))
-	})
-}
-
-func setupCalendar(s *server.MCPServer, cfg *config.Config, registerTool func(string, func())) {
-	if !cfg.Calendar.Enabled {
-		log.Println("Warning: Google Calendar not enabled in config. Skipping Calendar tools.")
-		return
-	}
-
-	log.Println("Initializing Google Calendar service client...")
-	credPath, tokenPath := cfg.Calendar.CredentialsFile, cfg.Calendar.TokenFile
-	client, err := calendar.NewClient(credPath, tokenPath)
-	if err != nil {
-		log.Fatalf("Failed to create Google Calendar client: %v", err)
-	}
-
-	toolConfig := map[string][]string{
-		"calendars": cfg.Calendar.Calendars,
-	}
-
-	registerTool("calendar_list", func() {
-		s.AddTool(calendarmcp.CalendarListTool(), calendarmcp.CalendarListHandler(client, toolConfig))
-	})
-	registerTool("calendar_list_events", func() {
-		s.AddTool(calendarmcp.CalendarListEventsTool(), calendarmcp.CalendarListEventsHandler(client, toolConfig))
-	})
-	registerTool("calendar_create_event", func() {
-		s.AddTool(calendarmcp.CalendarCreateEventTool(), calendarmcp.CalendarCreateEventHandler(client, toolConfig))
-	})
-	registerTool("calendar_patch_event", func() {
-		s.AddTool(calendarmcp.CalendarPatchEventTool(), calendarmcp.CalendarPatchEventHandler(client, toolConfig))
-	})
-	registerTool("calendar_delete_event", func() {
-		s.AddTool(calendarmcp.CalendarDeleteEventTool(), calendarmcp.CalendarDeleteEventHandler(client, toolConfig))
-	})
-	registerTool("calendar_move_event", func() {
-		s.AddTool(calendarmcp.CalendarMoveEventTool(), calendarmcp.CalendarMoveEventHandler(client, toolConfig))
-	})
-}
-
-func setupGmail(s *server.MCPServer, cfg *config.Config, registerTool func(string, func())) {
-	if !cfg.Gmail.Enabled {
-		log.Println("Warning: Gmail not enabled in config. Skipping Gmail tools.")
-		return
-	}
-
-	log.Println("Initializing Gmail service client...")
-	client, err := gmail.NewClient(cfg.Gmail.CredentialsFile, cfg.Gmail.TokenFile)
-	if err != nil {
-		log.Fatalf("Failed to create Gmail client: %v", err)
-	}
-
-	registerTool("gmail_search", func() {
-		s.AddTool(gmailmcp.GmailSearchTool(), gmailmcp.GmailSearchHandler(client))
-	})
-	registerTool("gmail_read", func() {
-		s.AddTool(gmailmcp.GmailReadTool(), gmailmcp.GmailReadHandler(client))
-	})
 }
 
 func serveStdio(srv *server.MCPServer) error {
@@ -269,7 +473,6 @@ func serveStdio(srv *server.MCPServer) error {
 
 func serveStreamableHTTP(srv *server.MCPServer, addr string) error {
 	httpServer := server.NewStreamableHTTPServer(srv,
-		// server.WithEndpointPath(addr),
 		server.WithLogger(util.DefaultLogger()),
 	)
 

@@ -14,7 +14,7 @@ type ActiveFileService struct {
 
 // Get returns the content of the currently active file as a string.
 func (s *ActiveFileService) Get(ctx context.Context) (string, error) {
-	u := s.client.baseURL.ResolveReference(&url.URL{Path: "active/"})
+	u := s.client.BaseURL().ResolveReference(&url.URL{Path: "active/"})
 	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
 	if err != nil {
 		return "", err
@@ -28,7 +28,7 @@ func (s *ActiveFileService) Get(ctx context.Context) (string, error) {
 // GetNote returns the active file parsed as a Note struct (including frontmatter and stats).
 // This sends the Accept: application/vnd.olrapi.note+json header.
 func (s *ActiveFileService) GetNote(ctx context.Context) (*Note, error) {
-	u := s.client.baseURL.ResolveReference(&url.URL{Path: "active/"})
+	u := s.client.BaseURL().ResolveReference(&url.URL{Path: "active/"})
 	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func (s *ActiveFileService) GetNote(ctx context.Context) (*Note, error) {
 
 // Append appends content to the end of the currently active file.
 func (s *ActiveFileService) Append(ctx context.Context, content string) error {
-	u := s.client.baseURL.ResolveReference(&url.URL{Path: "active/"})
+	u := s.client.BaseURL().ResolveReference(&url.URL{Path: "active/"})
 	req, err := http.NewRequestWithContext(ctx, "POST", u.String(), strings.NewReader(content))
 	if err != nil {
 		return err
@@ -54,7 +54,7 @@ func (s *ActiveFileService) Append(ctx context.Context, content string) error {
 
 // Delete deletes the currently active file.
 func (s *ActiveFileService) Delete(ctx context.Context) error {
-	u := s.client.baseURL.ResolveReference(&url.URL{Path: "active/"})
+	u := s.client.BaseURL().ResolveReference(&url.URL{Path: "active/"})
 	req, err := http.NewRequestWithContext(ctx, "DELETE", u.String(), nil)
 	if err != nil {
 		return err
@@ -65,7 +65,7 @@ func (s *ActiveFileService) Delete(ctx context.Context) error {
 
 // Patch updates the active file.
 func (s *ActiveFileService) Patch(ctx context.Context, op PatchOperation, targetType TargetType, target string, content string) error {
-	u := s.client.baseURL.ResolveReference(&url.URL{Path: "active/"})
+	u := s.client.BaseURL().ResolveReference(&url.URL{Path: "active/"})
 	req, err := http.NewRequestWithContext(ctx, "PATCH", u.String(), strings.NewReader(content))
 	if err != nil {
 		return err

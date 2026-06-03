@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/bttk/bttk-mcp/pkg/calendar"
@@ -16,6 +17,39 @@ import (
 var ErrAccessDenied = errors.New("access to calendar is not allowed by configuration")
 
 const defaultCalendarID = "primary"
+
+// CalendarConfig holds the allowed Google Calendars configuration thread-safely.
+type CalendarConfig struct {
+	mu        sync.RWMutex
+	calendars []string
+}
+
+// GetAllowedCalendars returns a copy of the allowed calendars slice thread-safely.
+func (c *CalendarConfig) GetAllowedCalendars() []string {
+	if c == nil {
+		return nil
+	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	res := make([]string, len(c.calendars))
+	copy(res, c.calendars)
+	return res
+}
+
+// SetAllowedCalendars sets the list of allowed calendars thread-safely.
+func (c *CalendarConfig) SetAllowedCalendars(calendars []string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.calendars = make([]string, len(calendars))
+	copy(c.calendars, calendars)
+}
+
+// NewCalendarConfig creates a new CalendarConfig initialized with the allowed calendars list.
+func NewCalendarConfig(calendars []string) *CalendarConfig {
+	c := &CalendarConfig{}
+	c.SetAllowedCalendars(calendars)
+	return c
+}
 
 func isCalendarAllowed(calendarID string, allowedCalendars []string) bool {
 	if len(allowedCalendars) == 0 {
@@ -29,8 +63,8 @@ func isCalendarAllowed(calendarID string, allowedCalendars []string) bool {
 	return false
 }
 
-func checkCalendarAccess(calendarID string, config map[string][]string) error {
-	allowedCalendars := config["calendars"]
+func checkCalendarAccess(calendarID string, config *CalendarConfig) error {
+	allowedCalendars := config.GetAllowedCalendars()
 	if !isCalendarAllowed(calendarID, allowedCalendars) {
 		return fmt.Errorf("%w: %s", ErrAccessDenied, calendarID)
 	}
@@ -46,7 +80,7 @@ func CalendarListTool() mcp.Tool {
 	)
 }
 
-func CalendarListHandler(client calendar.API, config map[string][]string) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func CalendarListHandler(client calendar.API, config *CalendarConfig) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	return func(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		calendarList, err := client.ListCalendars()
 		if err != nil {
@@ -55,7 +89,7 @@ func CalendarListHandler(client calendar.API, config map[string][]string) func(c
 
 		// Filter list
 		var filteredList []*googleCalendar.CalendarListEntry
-		allowedCalendars := config["calendars"]
+		allowedCalendars := config.GetAllowedCalendars()
 
 		for _, item := range calendarList {
 			if !isCalendarAllowed(item.Id, allowedCalendars) {
@@ -94,7 +128,7 @@ func CalendarListEventsTool() mcp.Tool {
 	)
 }
 
-func CalendarListEventsHandler(client calendar.API, config map[string][]string) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func CalendarListEventsHandler(client calendar.API, config *CalendarConfig) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	return func(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args, ok := request.Params.Arguments.(map[string]interface{})
 		if !ok {
@@ -195,7 +229,7 @@ func parseEventDateTime(val string) (*googleCalendar.EventDateTime, error) {
 	return &googleCalendar.EventDateTime{DateTime: t.Format(time.RFC3339)}, nil
 }
 
-func CalendarCreateEventHandler(client calendar.API, config map[string][]string) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func CalendarCreateEventHandler(client calendar.API, config *CalendarConfig) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	return func(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args, ok := request.Params.Arguments.(map[string]interface{})
 		if !ok {
@@ -280,7 +314,7 @@ func CalendarPatchEventTool() mcp.Tool {
 	)
 }
 
-func CalendarPatchEventHandler(client calendar.API, config map[string][]string) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func CalendarPatchEventHandler(client calendar.API, config *CalendarConfig) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	return func(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args, ok := request.Params.Arguments.(map[string]interface{})
 		if !ok {
@@ -362,7 +396,7 @@ func CalendarDeleteEventTool() mcp.Tool {
 	)
 }
 
-func CalendarDeleteEventHandler(client calendar.API, config map[string][]string) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func CalendarDeleteEventHandler(client calendar.API, config *CalendarConfig) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	return func(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args, ok := request.Params.Arguments.(map[string]interface{})
 		if !ok {
@@ -402,7 +436,7 @@ func CalendarMoveEventTool() mcp.Tool {
 	)
 }
 
-func CalendarMoveEventHandler(client calendar.API, config map[string][]string) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func CalendarMoveEventHandler(client calendar.API, config *CalendarConfig) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	return func(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args, ok := request.Params.Arguments.(map[string]interface{})
 		if !ok {

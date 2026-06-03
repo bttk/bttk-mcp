@@ -14,7 +14,7 @@ type VaultService struct {
 
 // List lists files in the root directory (if path is empty) or a specified directory.
 func (s *VaultService) List(ctx context.Context, path string) ([]string, error) {
-	u := s.client.baseURL.ResolveReference(&url.URL{Path: "vault/" + path})
+	u := s.client.BaseURL().ResolveReference(&url.URL{Path: "vault/" + path})
 	// If path is a directory, it ensures trailing slash usually, but API might be flexible.
 	// The API doc says /vault/{pathToDirectory}/ for directory listing.
 	// If path is empty, it uses /vault/
@@ -33,7 +33,7 @@ func (s *VaultService) List(ctx context.Context, path string) ([]string, error) 
 
 // Get returns the content of a file in the vault.
 func (s *VaultService) Get(ctx context.Context, path string) (string, error) {
-	u := s.client.baseURL.ResolveReference(&url.URL{Path: "vault/" + path})
+	u := s.client.BaseURL().ResolveReference(&url.URL{Path: "vault/" + path})
 	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
 	if err != nil {
 		return "", err
@@ -46,7 +46,7 @@ func (s *VaultService) Get(ctx context.Context, path string) (string, error) {
 
 // GetNote returns the file parsed as a Note struct.
 func (s *VaultService) GetNote(ctx context.Context, path string) (*Note, error) {
-	u := s.client.baseURL.ResolveReference(&url.URL{Path: "vault/" + path})
+	u := s.client.BaseURL().ResolveReference(&url.URL{Path: "vault/" + path})
 	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
 	if err != nil {
 		return nil, err
@@ -60,7 +60,7 @@ func (s *VaultService) GetNote(ctx context.Context, path string) (*Note, error) 
 
 // Create creates a new file or updates an existing one with the given content.
 func (s *VaultService) Create(ctx context.Context, path, content string) error {
-	u := s.client.baseURL.ResolveReference(&url.URL{Path: "vault/" + path})
+	u := s.client.BaseURL().ResolveReference(&url.URL{Path: "vault/" + path})
 	req, err := http.NewRequestWithContext(ctx, "PUT", u.String(), strings.NewReader(content))
 	if err != nil {
 		return err
@@ -72,7 +72,7 @@ func (s *VaultService) Create(ctx context.Context, path, content string) error {
 
 // Delete deletes a file in the vault.
 func (s *VaultService) Delete(ctx context.Context, path string) error {
-	u := s.client.baseURL.ResolveReference(&url.URL{Path: "vault/" + path})
+	u := s.client.BaseURL().ResolveReference(&url.URL{Path: "vault/" + path})
 	req, err := http.NewRequestWithContext(ctx, "DELETE", u.String(), nil)
 	if err != nil {
 		return err

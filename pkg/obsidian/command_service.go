@@ -19,7 +19,7 @@ type Command struct {
 
 // List returns a list of available commands.
 func (s *CommandService) List(ctx context.Context) ([]Command, error) {
-	u := s.client.baseURL.ResolveReference(&url.URL{Path: "commands/"})
+	u := s.client.BaseURL().ResolveReference(&url.URL{Path: "commands/"})
 	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
 	if err != nil {
 		return nil, err
@@ -34,7 +34,7 @@ func (s *CommandService) List(ctx context.Context) ([]Command, error) {
 
 // Execute executes a command by its ID.
 func (s *CommandService) Execute(ctx context.Context, commandID string) error {
-	u := s.client.baseURL.ResolveReference(&url.URL{Path: "commands/" + commandID + "/"})
+	u := s.client.BaseURL().ResolveReference(&url.URL{Path: "commands/" + commandID + "/"})
 	req, err := http.NewRequestWithContext(ctx, "POST", u.String(), nil)
 	if err != nil {
 		return err

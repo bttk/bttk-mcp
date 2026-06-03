@@ -16,7 +16,7 @@ type PeriodicService struct {
 // GetCurrent returns the content of the current periodic note for the specified period.
 // period can be "daily", "weekly", "monthly", "quarterly", "yearly".
 func (s *PeriodicService) GetCurrent(ctx context.Context, period string) (string, error) {
-	u := s.client.baseURL.ResolveReference(&url.URL{Path: fmt.Sprintf("periodic/%s/", period)})
+	u := s.client.BaseURL().ResolveReference(&url.URL{Path: fmt.Sprintf("periodic/%s/", period)})
 	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
 	if err != nil {
 		return "", err
@@ -29,7 +29,7 @@ func (s *PeriodicService) GetCurrent(ctx context.Context, period string) (string
 
 // GetCurrentNote returns the current periodic note parsed as a Note struct.
 func (s *PeriodicService) GetCurrentNote(ctx context.Context, period string) (*Note, error) {
-	u := s.client.baseURL.ResolveReference(&url.URL{Path: fmt.Sprintf("periodic/%s/", period)})
+	u := s.client.BaseURL().ResolveReference(&url.URL{Path: fmt.Sprintf("periodic/%s/", period)})
 	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
 	if err != nil {
 		return nil, err
@@ -43,7 +43,7 @@ func (s *PeriodicService) GetCurrentNote(ctx context.Context, period string) (*N
 
 // AppendToCurrent appends content to the current periodic note.
 func (s *PeriodicService) AppendToCurrent(ctx context.Context, period, content string) error {
-	u := s.client.baseURL.ResolveReference(&url.URL{Path: fmt.Sprintf("periodic/%s/", period)})
+	u := s.client.BaseURL().ResolveReference(&url.URL{Path: fmt.Sprintf("periodic/%s/", period)})
 	req, err := http.NewRequestWithContext(ctx, "POST", u.String(), strings.NewReader(content))
 	if err != nil {
 		return err
@@ -55,7 +55,7 @@ func (s *PeriodicService) AppendToCurrent(ctx context.Context, period, content s
 
 // PatchCurrent updates the current periodic note.
 func (s *PeriodicService) PatchCurrent(ctx context.Context, period string, op PatchOperation, targetType TargetType, target string, content string) error {
-	u := s.client.baseURL.ResolveReference(&url.URL{Path: fmt.Sprintf("periodic/%s/", period)})
+	u := s.client.BaseURL().ResolveReference(&url.URL{Path: fmt.Sprintf("periodic/%s/", period)})
 	req, err := http.NewRequestWithContext(ctx, "PATCH", u.String(), strings.NewReader(content))
 	if err != nil {
 		return err
@@ -71,7 +71,7 @@ func (s *PeriodicService) PatchCurrent(ctx context.Context, period string, op Pa
 
 // DeleteCurrent deletes the current periodic note.
 func (s *PeriodicService) DeleteCurrent(ctx context.Context, period string) error {
-	u := s.client.baseURL.ResolveReference(&url.URL{Path: fmt.Sprintf("periodic/%s/", period)})
+	u := s.client.BaseURL().ResolveReference(&url.URL{Path: fmt.Sprintf("periodic/%s/", period)})
 	req, err := http.NewRequestWithContext(ctx, "DELETE", u.String(), nil)
 	if err != nil {
 		return err
@@ -82,7 +82,7 @@ func (s *PeriodicService) DeleteCurrent(ctx context.Context, period string) erro
 
 // Get returns the content of a periodic note for a specific date.
 func (s *PeriodicService) Get(ctx context.Context, period string, year, month, day int) (string, error) {
-	u := s.client.baseURL.ResolveReference(&url.URL{Path: fmt.Sprintf("periodic/%s/%d/%d/%d/", period, year, month, day)})
+	u := s.client.BaseURL().ResolveReference(&url.URL{Path: fmt.Sprintf("periodic/%s/%d/%d/%d/", period, year, month, day)})
 	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
 	if err != nil {
 		return "", err

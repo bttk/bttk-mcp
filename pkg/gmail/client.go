@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/bttk/bttk-mcp/internal/googleapi"
 	"google.golang.org/api/gmail/v1"
@@ -24,10 +25,13 @@ var (
 	ErrListMessages = errors.New("unable to list messages")
 	// ErrGetMessage is returned when a message cannot be retrieved.
 	ErrGetMessage = errors.New("unable to get message")
+	// ErrNotInitialized is returned when the Gmail service is not initialized.
+	ErrNotInitialized = errors.New("gmail service not initialized")
 )
 
 // Client is a wrapper around the Gmail API service.
 type Client struct {
+	mu      sync.RWMutex
 	Service *gmail.Service
 }
 
@@ -72,18 +76,56 @@ func NewClient(credentialsPath, tokenPath string) (*Client, error) {
 	return &Client{Service: srv}, nil
 }
 
+// Update re-configures/re-initializes the Gmail client service thread-safely in-place.
+func (c *Client) Update(credentialsPath, tokenPath string) error {
+	ctx := context.Background()
+	b, err := os.ReadFile(credentialsPath)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrReadSecret, err)
+	}
+
+	client, err := googleapi.GetClient(b, tokenPath)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrParseConfig, err)
+	}
+
+	srv, err := gmail.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrClientRetrieve, err)
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.Service = srv
+	return nil
+}
+
+// Disable clears the inner service thread-safely.
+func (c *Client) Disable() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.Service = nil
+}
+
 // SearchMessages searches for messages matching the query.
 // It returns a list of simplified message details.
 func (c *Client) SearchMessages(query string, maxResults int64) ([]*Message, error) {
+	c.mu.RLock()
+	srv := c.Service
+	c.mu.RUnlock()
+	if srv == nil {
+		return nil, ErrNotInitialized
+	}
+
 	user := "me"
-	r, err := c.Service.Users.Messages.List(user).Q(query).MaxResults(maxResults).Do()
+	r, err := srv.Users.Messages.List(user).Q(query).MaxResults(maxResults).Do()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrListMessages, err)
 	}
 
 	messages := make([]*Message, 0, len(r.Messages))
 	for _, msg := range r.Messages {
-		m, err := c.Service.Users.Messages.Get(user, msg.Id).
+		m, err := srv.Users.Messages.Get(user, msg.Id).
 			Format("metadata").
 			MetadataHeaders("To", "From", "Subject", "Date", "Cc").
 			Fields("id", "threadId", "snippet", "payload(headers)").
@@ -127,8 +169,15 @@ func (c *Client) SearchMessages(query string, maxResults int64) ([]*Message, err
 
 // GetMessage retrieves the details of a specific message.
 func (c *Client) GetMessage(id string) (*gmail.Message, error) {
+	c.mu.RLock()
+	srv := c.Service
+	c.mu.RUnlock()
+	if srv == nil {
+		return nil, ErrNotInitialized
+	}
+
 	user := "me"
-	msg, err := c.Service.Users.Messages.Get(user, id).Format("full").Do()
+	msg, err := srv.Users.Messages.Get(user, id).Format("full").Do()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrGetMessage, err)
 	}

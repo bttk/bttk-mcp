@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/bttk/bttk-mcp/internal/googleapi"
@@ -31,10 +32,13 @@ var (
 	ErrDeleteEvent = errors.New("unable to delete event")
 	// ErrMoveEvent is returned when an event cannot be moved.
 	ErrMoveEvent = errors.New("unable to move event")
+	// ErrNotInitialized is returned when the Google Calendar service is not initialized.
+	ErrNotInitialized = errors.New("calendar service not initialized")
 )
 
 // Client is a wrapper around the Google Calendar API service.
 type Client struct {
+	mu      sync.RWMutex
 	Service *calendar.Service
 }
 
@@ -71,9 +75,47 @@ func NewClient(credentialsPath, tokenPath string) (*Client, error) {
 	return &Client{Service: srv}, nil
 }
 
+// Update re-configures/re-initializes the Calendar client service thread-safely in-place.
+func (c *Client) Update(credentialsPath, tokenPath string) error {
+	ctx := context.Background()
+	b, err := os.ReadFile(credentialsPath)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrReadSecret, err)
+	}
+
+	client, err := googleapi.GetClient(b, tokenPath)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrParseConfig, err)
+	}
+
+	srv, err := calendar.NewService(ctx, option.WithHTTPClient(client))
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrClientRetrieve, err)
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.Service = srv
+	return nil
+}
+
+// Disable clears the inner service thread-safely.
+func (c *Client) Disable() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.Service = nil
+}
+
 // ListCalendars lists the available calendars.
 func (c *Client) ListCalendars() ([]*calendar.CalendarListEntry, error) {
-	list, err := c.Service.CalendarList.List().Do()
+	c.mu.RLock()
+	srv := c.Service
+	c.mu.RUnlock()
+	if srv == nil {
+		return nil, ErrNotInitialized
+	}
+
+	list, err := srv.CalendarList.List().Do()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrListCalendars, err)
 	}
@@ -85,7 +127,15 @@ func (c *Client) ListEvents(calendarID string, timeMin, timeMax string, maxResul
 	if timeMin == "" {
 		timeMin = time.Now().Format(time.RFC3339)
 	}
-	call := c.Service.Events.List(calendarID).ShowDeleted(false).
+
+	c.mu.RLock()
+	srv := c.Service
+	c.mu.RUnlock()
+	if srv == nil {
+		return nil, ErrNotInitialized
+	}
+
+	call := srv.Events.List(calendarID).ShowDeleted(false).
 		SingleEvents(true).TimeMin(timeMin).OrderBy("startTime")
 
 	if timeMax != "" {
@@ -104,7 +154,14 @@ func (c *Client) ListEvents(calendarID string, timeMin, timeMax string, maxResul
 
 // CreateEvent creates a new event in the specified calendar.
 func (c *Client) CreateEvent(calendarID string, event *calendar.Event) (*calendar.Event, error) {
-	createdEvent, err := c.Service.Events.Insert(calendarID, event).Do()
+	c.mu.RLock()
+	srv := c.Service
+	c.mu.RUnlock()
+	if srv == nil {
+		return nil, ErrNotInitialized
+	}
+
+	createdEvent, err := srv.Events.Insert(calendarID, event).Do()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrCreateEvent, err)
 	}
@@ -113,7 +170,14 @@ func (c *Client) CreateEvent(calendarID string, event *calendar.Event) (*calenda
 
 // PatchEvent patches an existing event in the specified calendar.
 func (c *Client) PatchEvent(calendarID, eventID string, event *calendar.Event) (*calendar.Event, error) {
-	patchedEvent, err := c.Service.Events.Patch(calendarID, eventID, event).Do()
+	c.mu.RLock()
+	srv := c.Service
+	c.mu.RUnlock()
+	if srv == nil {
+		return nil, ErrNotInitialized
+	}
+
+	patchedEvent, err := srv.Events.Patch(calendarID, eventID, event).Do()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrPatchEvent, err)
 	}
@@ -122,7 +186,14 @@ func (c *Client) PatchEvent(calendarID, eventID string, event *calendar.Event) (
 
 // DeleteEvent deletes an event from the specified calendar.
 func (c *Client) DeleteEvent(calendarID, eventID string) error {
-	err := c.Service.Events.Delete(calendarID, eventID).Do()
+	c.mu.RLock()
+	srv := c.Service
+	c.mu.RUnlock()
+	if srv == nil {
+		return ErrNotInitialized
+	}
+
+	err := srv.Events.Delete(calendarID, eventID).Do()
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrDeleteEvent, err)
 	}
@@ -131,7 +202,14 @@ func (c *Client) DeleteEvent(calendarID, eventID string) error {
 
 // MoveEvent moves an event to another calendar.
 func (c *Client) MoveEvent(calendarID, eventID, destinationID string) (*calendar.Event, error) {
-	movedEvent, err := c.Service.Events.Move(calendarID, eventID, destinationID).Do()
+	c.mu.RLock()
+	srv := c.Service
+	c.mu.RUnlock()
+	if srv == nil {
+		return nil, ErrNotInitialized
+	}
+
+	movedEvent, err := srv.Events.Move(calendarID, eventID, destinationID).Do()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrMoveEvent, err)
 	}

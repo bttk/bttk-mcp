@@ -29,7 +29,7 @@ type SearchResult struct {
 
 // Simple performs a simple text search.
 func (s *SearchService) Simple(ctx context.Context, query string, contextLength int) ([]SearchResult, error) {
-	u := s.client.baseURL.ResolveReference(&url.URL{Path: "search/simple/"})
+	u := s.client.BaseURL().ResolveReference(&url.URL{Path: "search/simple/"})
 	q := u.Query()
 	q.Set("query", query)
 	if contextLength > 0 {
@@ -55,7 +55,7 @@ type JSONLogicResult struct {
 
 // JSONLogic performs a structured search using JsonLogic.
 func (s *SearchService) JSONLogic(ctx context.Context, query interface{}) ([]JSONLogicResult, error) {
-	u := s.client.baseURL.ResolveReference(&url.URL{Path: "search/"})
+	u := s.client.BaseURL().ResolveReference(&url.URL{Path: "search/"})
 
 	body, err := json.Marshal(query)
 	if err != nil {
@@ -75,7 +75,7 @@ func (s *SearchService) JSONLogic(ctx context.Context, query interface{}) ([]JSO
 
 // Dataview performs a search using Dataview Query Language (DQL).
 func (s *SearchService) Dataview(ctx context.Context, dql string) ([]JSONLogicResult, error) {
-	u := s.client.baseURL.ResolveReference(&url.URL{Path: "search/"})
+	u := s.client.BaseURL().ResolveReference(&url.URL{Path: "search/"})
 	req, err := http.NewRequestWithContext(ctx, "POST", u.String(), bytes.NewReader([]byte(dql)))
 	if err != nil {
 		return nil, err

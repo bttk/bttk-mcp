@@ -14,7 +14,7 @@ type OpenService struct {
 // File opens the specified file in Obsidian.
 // If newLeaf is true, the file will be opened in a new leaf (tab).
 func (s *OpenService) File(ctx context.Context, filename string, newLeaf bool) error {
-	u := s.client.baseURL.ResolveReference(&url.URL{Path: "open/" + filename})
+	u := s.client.BaseURL().ResolveReference(&url.URL{Path: "open/" + filename})
 	if newLeaf {
 		q := u.Query()
 		q.Set("newLeaf", "true")

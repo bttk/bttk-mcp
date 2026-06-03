@@ -77,7 +77,7 @@ func TestCalendarListTool(t *testing.T) {
 	mockClient.On("ListCalendars").Return(calendars, nil)
 
 	// Config allows all
-	config := map[string][]string{}
+	config := NewCalendarConfig(nil)
 
 	srv, err := mcptest.NewServer(t, server.ServerTool{
 		Tool:    CalendarListTool(),
@@ -118,9 +118,7 @@ func TestCalendarListToolfiltered(t *testing.T) {
 	mockClient.On("ListCalendars").Return(calendars, nil)
 
 	// Config allows only cal1
-	config := map[string][]string{
-		"calendars": {"cal1"},
-	}
+	config := NewCalendarConfig([]string{"cal1"})
 
 	srv, err := mcptest.NewServer(t, server.ServerTool{
 		Tool:    CalendarListTool(),
@@ -157,7 +155,7 @@ func TestCalendarListEventsTool(t *testing.T) {
 	// Note: arguments matching needs to assume zero values for optionals passed as empty string
 	mockClient.On("ListEvents", "primary", "", "", int64(0)).Return(events, nil)
 
-	config := map[string][]string{}
+	config := NewCalendarConfig(nil)
 
 	srv, err := mcptest.NewServer(t, server.ServerTool{
 		Tool:    CalendarListEventsTool(),
@@ -188,9 +186,7 @@ func TestCalendarListEventsTool(t *testing.T) {
 
 func TestCalendarListEventsTool_Blocked(t *testing.T) {
 	mockClient := new(MockCalendarAPI)
-	config := map[string][]string{
-		"calendars": {"allowed"},
-	}
+	config := NewCalendarConfig([]string{"allowed"})
 
 	srv, err := mcptest.NewServer(t, server.ServerTool{
 		Tool:    CalendarListEventsTool(),
@@ -218,7 +214,7 @@ func TestCalendarCreateEventTool(t *testing.T) {
 	expectedEvent := &googleCalendar.Event{Id: "evt1", HtmlLink: "http://link"}
 	mockClient.On("CreateEvent", "primary", mock.AnythingOfType("*calendar.Event")).Return(expectedEvent, nil)
 
-	config := map[string][]string{}
+	config := NewCalendarConfig(nil)
 
 	srv, err := mcptest.NewServer(t, server.ServerTool{
 		Tool:    CalendarCreateEventTool(),
@@ -250,7 +246,7 @@ func TestCalendarCreateEventTool(t *testing.T) {
 
 func TestCalendarCreateEventTool_MissingArgs(t *testing.T) {
 	mockClient := new(MockCalendarAPI)
-	config := map[string][]string{}
+	config := NewCalendarConfig(nil)
 
 	srv, err := mcptest.NewServer(t, server.ServerTool{
 		Tool:    CalendarCreateEventTool(),
@@ -281,7 +277,7 @@ func TestCalendarPatchEventTool(t *testing.T) {
 	// We matched against a pointer in CreateEvent, here we do similar for PatchEvent
 	mockClient.On("PatchEvent", "primary", "evt1", mock.AnythingOfType("*calendar.Event")).Return(expectedEvent, nil)
 
-	config := map[string][]string{}
+	config := NewCalendarConfig(nil)
 
 	srv, err := mcptest.NewServer(t, server.ServerTool{
 		Tool:    CalendarPatchEventTool(),
@@ -315,7 +311,7 @@ func TestCalendarDeleteEventTool(t *testing.T) {
 
 	mockClient.On("DeleteEvent", "primary", "evt1").Return(nil)
 
-	config := map[string][]string{}
+	config := NewCalendarConfig(nil)
 
 	srv, err := mcptest.NewServer(t, server.ServerTool{
 		Tool:    CalendarDeleteEventTool(),
@@ -350,7 +346,7 @@ func TestCalendarCreateEventTool_AllDay(t *testing.T) {
 		return e.Start.Date == "2023-10-01" && e.End.Date == "2023-10-02" && e.Start.DateTime == "" && e.End.DateTime == ""
 	})).Return(expectedEvent, nil)
 
-	config := map[string][]string{}
+	config := NewCalendarConfig(nil)
 
 	srv, err := mcptest.NewServer(t, server.ServerTool{
 		Tool:    CalendarCreateEventTool(),
@@ -382,7 +378,7 @@ func TestCalendarPatchEventTool_AllDay(t *testing.T) {
 		return e.Start != nil && e.Start.Date == "2023-10-01" && e.Start.DateTime == ""
 	})).Return(expectedEvent, nil)
 
-	config := map[string][]string{}
+	config := NewCalendarConfig(nil)
 
 	srv, err := mcptest.NewServer(t, server.ServerTool{
 		Tool:    CalendarPatchEventTool(),
@@ -410,7 +406,7 @@ func TestCalendarMoveEventTool(t *testing.T) {
 	expectedEvent := &googleCalendar.Event{Id: "evt1", HtmlLink: "http://link"}
 	mockClient.On("MoveEvent", "primary", "evt1", "destCal").Return(expectedEvent, nil)
 
-	config := map[string][]string{}
+	config := NewCalendarConfig(nil)
 
 	srv, err := mcptest.NewServer(t, server.ServerTool{
 		Tool:    CalendarMoveEventTool(),

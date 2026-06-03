@@ -100,11 +100,7 @@ func runServer(configPath string) {
 	)
 
 	// Pass config for runtime allowlist checking in tools
-	// We need to convert cfg.Calendar.Calendars to map/slice relevant to tools
-	// tools.go expects map[string][]string
-	toolConfig := map[string][]string{
-		"calendars": cfg.Calendar.Calendars,
-	}
+	toolConfig := calendarmcp.NewCalendarConfig(cfg.Calendar.Calendars)
 
 	s.AddTool(calendarmcp.CalendarListTool(), calendarmcp.CalendarListHandler(client, toolConfig))
 	s.AddTool(calendarmcp.CalendarListEventsTool(), calendarmcp.CalendarListEventsHandler(client, toolConfig))
