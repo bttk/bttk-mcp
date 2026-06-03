@@ -1,6 +1,7 @@
 package googleapi
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -34,7 +35,7 @@ func TestGetClient_NonInteractive(t *testing.T) {
 
 	// Since we are running in tests, stdin/stdout are not terminals,
 	// so it should fail with ErrNonInteractive.
-	client, err := GetClient(dummyCreds, tokenPath)
+	client, err := GetClient(context.Background(), dummyCreds, tokenPath)
 
 	assert.Nil(t, client)
 	assert.Error(t, err)
