@@ -4,49 +4,34 @@ This repository contains a collection of Model Context Protocol (MCP) servers an
 
 ## Core Components
 
-The project currently provides the following MCP servers:
+The project provides the following components:
 
-### Obsidian MCP Server (`cmd/obsidianmcp`)
+### MCP Server (`cmd/bttkmcp`)
 
-Allows AI agents to interact with an [Obsidian](https://obsidian.md/) vault via the [Obsidian Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api).
+The combined MCP server merges Gmail, Google Calendar, and Obsidian tools into a single running process. It can run in standard input/output (stdio) mode, or as an HTTP server using Server-Sent Events (SSE).
 
 **Tools:**
-*   Read-only file access:
+*   **Obsidian Tools:**
     *   `obsidian_get_active_file`: Get the content of the active file.
     *   `obsidian_get_daily_note`: Get the content of a daily note.
     *   `obsidian_get_file`: Get the content of a file.
     *   `obsidian_list_files`: List files in the vault.
-*   Search:
     *   `obsidian_search_simple`: Simple text search.
     *   `obsidian_search_json_logic`: JSON Logic search.
     *   `obsidian_search_dql`: Dataview Query Language search.
-*   Interactions with the active file:
     *   `obsidian_append_active_file`: Append content to the active file.
     *   `obsidian_open_file`: Open a file in Obsidian UI.
+*   **Gmail Tools:**
+    *   `gmail_search`: Search for messages.
+    *   `gmail_read`: Read specific message content by ID.
+*   **Calendar Tools:**
+    *   `calendar_list`: List available calendars.
+    *   `calendar_list_events`: List upcoming events from a specific calendar.
+    *   `calendar_create_event`: Create a new event in a specific calendar.
 
-### Gmail MCP Server (`cmd/gmailmcp`)
+### Obsidian CLI Tool (`cmd/obscom`)
 
-Provides read-only access to a Gmail account, allowing agents to search and read emails.
-
-**Tools:**
-*   `gmail_search`: Search for messages.
-*   `gmail_read`: Read specific message content by ID.
-
-### Calendar MCP Server (`cmd/calendarmcp`)
-
-Provides read **and write** access to a Google Calendar account, allowing agents to list calendars and events.
-
-**Tools:**
-*   `calendar_list`: List available calendars.
-*   `calendar_list_events`: List upcoming events from a specific calendar.
-*   `calendar_create_event`: Create a new event in a specific calendar.
-
-#### Listing Calendars
-
-To list available calendars:
-```bash
-calendarmcp list
-```
+A lightweight command-line interface to interact with Obsidian directly. Currently supports listing all registered Obsidian commands with their Names and IDs.
 
 ## Getting Started
 
@@ -69,15 +54,13 @@ calendarmcp list
     *   Download the `credentials.json` file.
 5. Authenticate using:
     ```bash
-    gmailmcp auth
+    go run ./cmd/bttkmcp auth
     ```
 
 ### Installation
 
 ```bash
-go install github.com/bttk/bttk-mcp/cmd/obsidianmcp@latest
-go install github.com/bttk/bttk-mcp/cmd/gmailmcp@latest
-go install github.com/bttk/bttk-mcp/cmd/calendarmcp@latest
+go install github.com/bttk/bttk-mcp/cmd/bttkmcp@latest
 ```
 
 ### Configuration (`config.json`)
@@ -150,9 +133,9 @@ Or in `~/.gemini/antigravity-cli/mcp_config.json`:
 }
 ```
 
-## Combined MCP Server (`cmd/bttkmcp`)
+## Deployment as a systemd Service
 
-The combined MCP server merges Gmail, Google Calendar, and Obsidian tools into a single running process. It can run in standard input/output (stdio) mode, or as an HTTP server using Server-Sent Events (SSE) if the `address` field is specified in the `mcp` section of your configuration.
+You can set up `bttkmcp` to run in the background as a systemd user service.
 
 ### Installation
 

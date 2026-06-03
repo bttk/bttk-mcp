@@ -4,10 +4,11 @@ This project implements a Model Context Protocol (MCP) server for Obsidian, allo
 
 ## Core Components
 
-### 1. Obsidian MCP Server (`cmd/obsidianmcp`)
+### 1. Combined MCP Server (`cmd/bttkmcp`)
 The main entry point for the MCP server. It handles:
 - **Registration of Tools**: Dynamically enables/disables tools based on JSON configuration.
-- **Communication Protocol**: Implements the MCP protocol over Stdio.
+- **Combined Services**: Merges Obsidian, Gmail, and Google Calendar tools into a single running process.
+- **Communication Protocol**: Implements the MCP protocol over Stdio or SSE.
 - **Verbose Logging**: Optional logging of incoming/outgoing messages for debugging.
 
 ### 2. Obsidian CLI Tool (`cmd/obscom`)
@@ -25,16 +26,13 @@ A custom Go client for the Obsidian Local REST API.
     - `Open`: Open specific files or folders.
 - **Configuration**: Managed via `pkg/obsidian/config`.
 
-### 4. Calendar MCP Server (`cmd/calendarmcp`)
-A separate MCP server for Google Calendar integration.
-- **Server Mode**: Runs the MCP server exposing calendar tools.
-- **CLI Mode**: 
-    - `list`: Lists available calendars.
-    - `auth`: checks authentication status.
-
-### 5. Calendar Client Library (`pkg/calendar`)
+### 4. Calendar Client Library (`pkg/calendar`)
 A custom Go client for the Google Calendar API.
 - **Features**: Authentication handling, event listing, event creation.
+
+### 5. Gmail Client Library (`pkg/gmail`)
+A custom Go client for the Gmail API.
+- **Features**: Authentication handling, message searching, message reading.
 
 ## Available MCP Tools
 
@@ -105,14 +103,9 @@ make test
 make lint
 ```
 
-### Running the MCP Server
+### Running the Combined MCP Server
 ```bash
-go run ./cmd/obsidianmcp -config config.json
-```
-
-### Running the Calendar MCP Server
-```bash
-go run ./cmd/calendarmcp -config config.json
+go run ./cmd/bttkmcp -config config.json
 ```
 
 ### Running the CLI tool
