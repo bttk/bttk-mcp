@@ -9,8 +9,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
-	"runtime"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -167,23 +165,6 @@ func getTokenFromWebManual(ctx context.Context, config *oauth2.Config) (*oauth2.
 		return nil, fmt.Errorf("unable to retrieve token from web: %w", err)
 	}
 	return tok, nil
-}
-
-func openBrowser(url string) error {
-	var cmd string
-	var args []string
-
-	switch runtime.GOOS {
-	case "windows":
-		cmd = "cmd"
-		args = []string{"/c", "start"}
-	case "darwin":
-		cmd = "open"
-	default: // "linux", "freebsd", "openbsd", "netbsd"
-		cmd = "xdg-open"
-	}
-	args = append(args, url)
-	return exec.Command(cmd, args...).Start()
 }
 
 // Retrieves a token from a local file.
