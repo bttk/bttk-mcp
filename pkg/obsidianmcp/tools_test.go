@@ -182,6 +182,20 @@ func TestOpenFile(t *testing.T) {
 	}, handler)
 }
 
+func TestMoveFile(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "MOVE", r.Method)
+		assert.Equal(t, "/vault/folder/old.md", r.URL.Path)
+		assert.Contains(t, r.Header.Get("Destination"), "/vault/folder/new.md")
+		w.WriteHeader(http.StatusOK)
+	}
+
+	testTool(t, MoveFileTool(), MoveFileHandler, "obsidian_move_file", map[string]interface{}{
+		"path":        "folder/old.md",
+		"destination": "folder/new.md",
+	}, handler)
+}
+
 func logMsg(t *testing.T, res *mcp.CallToolResult) {
 	assert.False(t, res.IsError, "Tool returned error")
 

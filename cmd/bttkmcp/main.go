@@ -139,6 +139,15 @@ var allTools = []struct {
 			return obsidianmcp.OpenFileHandler(obs)
 		},
 	},
+	{
+		name:        "move_file",
+		mcpName:     "obsidian_move_file",
+		serviceName: "obsidian",
+		getTool:     obsidianmcp.MoveFileTool,
+		getHandler: func(obs *obsidian.Client, _ *calendar.Client, _ *calendarmcp.CalendarConfig, _ *gmail.Client) server.ToolHandlerFunc {
+			return obsidianmcp.MoveFileHandler(obs)
+		},
+	},
 
 	// Calendar Tools
 	{

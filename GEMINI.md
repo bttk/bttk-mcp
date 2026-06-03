@@ -49,6 +49,7 @@ A custom Go client for the Google Calendar API.
 | `get_file` | Retrieves the content of a specific file by path. |
 | `list_files` | Lists files in a specified directory. |
 | `create_or_update_file` | Creates a new file or updates an existing one. |
+| `move_file` | Moves or renames a file in the vault. |
 | `open_file` | Opens a specific file in the Obsidian UI. |
 | `calendar_list` | Lists available Google Calendars. |
 | `calendar_list_events` | Lists upcoming events from a specific calendar. |

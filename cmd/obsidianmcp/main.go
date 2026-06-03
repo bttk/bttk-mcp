@@ -87,6 +87,9 @@ func main() {
 		"open_file": func() {
 			s.AddTool(obsidianmcp.OpenFileTool(), obsidianmcp.OpenFileHandler(client))
 		},
+		"move_file": func() {
+			s.AddTool(obsidianmcp.MoveFileTool(), obsidianmcp.MoveFileHandler(client))
+		},
 	}
 
 	// Register tools based on config

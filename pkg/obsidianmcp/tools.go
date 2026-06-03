@@ -341,3 +341,36 @@ func OpenFileHandler(client *obsidian.Client) server.ToolHandlerFunc {
 		return mcp.NewToolResultText("File opened successfully"), nil
 	}
 }
+
+// MoveFileTool returns the tool definition
+func MoveFileTool() mcp.Tool {
+	return mcp.NewTool("obsidian_move_file",
+		mcp.WithDestructiveHintAnnotation(false),
+		mcp.WithIdempotentHintAnnotation(true),
+		mcp.WithDescription("Move or rename a file in the vault"),
+		mcp.WithString("path", mcp.Required(), mcp.Description("Current path to the file")),
+		mcp.WithString("destination", mcp.Required(), mcp.Description("New path for the file")),
+	)
+}
+
+// MoveFileHandler returns the tool handler
+func MoveFileHandler(client *obsidian.Client) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args := getArgs(request)
+		path, _ := args["path"].(string)
+		destination, _ := args["destination"].(string)
+
+		if path == "" {
+			return mcp.NewToolResultError("path is required"), nil
+		}
+		if destination == "" {
+			return mcp.NewToolResultError("destination is required"), nil
+		}
+
+		err := client.Vault.Move(ctx, path, destination)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("failed to move file: %v", err)), nil
+		}
+		return mcp.NewToolResultText("File moved successfully"), nil
+	}
+}

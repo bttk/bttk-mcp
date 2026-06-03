@@ -251,3 +251,23 @@ func TestClient_Search_Dataview(t *testing.T) {
 	require.Len(t, results, 1)
 	assert.Equal(t, "b.md", results[0].Filename)
 }
+
+func TestClient_Vault_Move(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/vault/source.md", func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "MOVE", r.Method)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
+		// We expect the full URL in the Destination header
+		dest := r.Header.Get("Destination")
+		assert.Contains(t, dest, "/vault/destination.md")
+		w.WriteHeader(http.StatusOK)
+	})
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	client, err := NewClient(server.URL, "test-token")
+	require.NoError(t, err)
+
+	err = client.Vault.Move(context.Background(), "source.md", "destination.md")
+	require.NoError(t, err)
+}

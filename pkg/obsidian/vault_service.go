@@ -80,3 +80,17 @@ func (s *VaultService) Delete(ctx context.Context, path string) error {
 
 	return s.client.do(req, nil)
 }
+
+// Move moves or renames a file or folder in the vault.
+func (s *VaultService) Move(ctx context.Context, path, destination string) error {
+	u := s.client.BaseURL().ResolveReference(&url.URL{Path: "vault/" + path})
+	destURL := s.client.BaseURL().ResolveReference(&url.URL{Path: "vault/" + destination})
+
+	req, err := http.NewRequestWithContext(ctx, "MOVE", u.String(), nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Destination", destURL.String())
+
+	return s.client.do(req, nil)
+}
