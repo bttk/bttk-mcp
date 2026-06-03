@@ -264,15 +264,16 @@ func main() {
 }
 
 func runAuth(cfg *config.Config) {
+	ctx := context.Background()
 	if cfg.Calendar.Enabled {
 		fmt.Println("Checking Calendar authentication...")
 		credPath, tokenPath := cfg.Calendar.CredentialsFile, cfg.Calendar.TokenFile
-		client, err := calendar.NewClient(credPath, tokenPath)
+		client, err := calendar.NewClient(ctx, credPath, tokenPath)
 		if err != nil {
 			log.Fatalf("Failed to create Calendar client: %v", err)
 		}
 		fmt.Println("Authentication successful. Verifying API access...")
-		_, err = client.ListCalendars()
+		_, err = client.ListCalendars(ctx)
 		if err != nil {
 			log.Fatalf("Calendar API verification failed: %v\n(If you have recently changed scopes, try deleting token.json)", err)
 		}
@@ -283,12 +284,12 @@ func runAuth(cfg *config.Config) {
 
 	if cfg.Gmail.Enabled {
 		fmt.Println("Checking Gmail authentication...")
-		client, err := gmail.NewClient(cfg.Gmail.CredentialsFile, cfg.Gmail.TokenFile)
+		client, err := gmail.NewClient(ctx, cfg.Gmail.CredentialsFile, cfg.Gmail.TokenFile)
 		if err != nil {
 			log.Fatalf("Failed to create Gmail client: %v", err)
 		}
 		fmt.Println("Authentication successful. Verifying API access...")
-		_, err = client.SearchMessages("label:INBOX", 1)
+		_, err = client.SearchMessages(ctx, "label:INBOX", 1)
 		if err != nil {
 			log.Fatalf("Gmail API verification failed: %v", err)
 		}
@@ -323,7 +324,7 @@ func updateObsidian(client *obsidian.Client, cfg *config.Config) {
 	}
 }
 
-func updateCalendar(client *calendar.Client, cfg *config.Config) {
+func updateCalendar(ctx context.Context, client *calendar.Client, cfg *config.Config) {
 	if !cfg.Calendar.Enabled {
 		log.Println("Google Calendar is disabled in config")
 		client.Disable()
@@ -332,13 +333,13 @@ func updateCalendar(client *calendar.Client, cfg *config.Config) {
 
 	log.Println("Initializing/Updating Google Calendar service client...")
 	credPath, tokenPath := cfg.Calendar.CredentialsFile, cfg.Calendar.TokenFile
-	err := client.Update(credPath, tokenPath)
+	err := client.Update(ctx, credPath, tokenPath)
 	if err != nil {
 		log.Printf("Failed to update Google Calendar client: %v", err)
 	}
 }
 
-func updateGmail(client *gmail.Client, cfg *config.Config) {
+func updateGmail(ctx context.Context, client *gmail.Client, cfg *config.Config) {
 	if !cfg.Gmail.Enabled {
 		log.Println("Gmail is disabled in config")
 		client.Disable()
@@ -346,7 +347,7 @@ func updateGmail(client *gmail.Client, cfg *config.Config) {
 	}
 
 	log.Println("Initializing/Updating Gmail service client...")
-	err := client.Update(cfg.Gmail.CredentialsFile, cfg.Gmail.TokenFile)
+	err := client.Update(ctx, cfg.Gmail.CredentialsFile, cfg.Gmail.TokenFile)
 	if err != nil {
 		log.Printf("Failed to update Gmail client: %v", err)
 	}
@@ -412,8 +413,8 @@ func runServer(cfg *config.Config, forceStdio bool, configPath string) {
 
 	// Update clients initially
 	updateObsidian(obsidianClient, cfg)
-	updateCalendar(calendarClient, cfg)
-	updateGmail(gmailClient, cfg)
+	updateCalendar(context.Background(), calendarClient, cfg)
+	updateGmail(context.Background(), gmailClient, cfg)
 	calendarConfig.SetAllowedCalendars(cfg.Calendar.Calendars)
 
 	// Reconcile and register tools initially
@@ -437,8 +438,8 @@ func runServer(cfg *config.Config, forceStdio bool, configPath string) {
 			}
 
 			updateObsidian(obsidianClient, newCfg)
-			updateCalendar(calendarClient, newCfg)
-			updateGmail(gmailClient, newCfg)
+			updateCalendar(context.Background(), calendarClient, newCfg)
+			updateGmail(context.Background(), gmailClient, newCfg)
 			calendarConfig.SetAllowedCalendars(newCfg.Calendar.Calendars)
 
 			reconcileTools(s, newCfg, obsidianClient, calendarClient, calendarConfig, gmailClient)

@@ -29,7 +29,7 @@ func GmailSearchTool() mcp.Tool {
 }
 
 func GmailSearchHandler(client gmail.API) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return func(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args, ok := request.Params.Arguments.(map[string]interface{})
 		if !ok {
 			return mcp.NewToolResultError("arguments must be a map"), nil
@@ -44,7 +44,7 @@ func GmailSearchHandler(client gmail.API) func(ctx context.Context, request mcp.
 			maxResults = int64(mr)
 		}
 
-		msgs, err := client.SearchMessages(query, maxResults)
+		msgs, err := client.SearchMessages(ctx, query, maxResults)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to search messages: %v", err)), nil
 		}
@@ -68,7 +68,7 @@ func GmailReadTool() mcp.Tool {
 }
 
 func GmailReadHandler(client gmail.API) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return func(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args, ok := request.Params.Arguments.(map[string]interface{})
 		if !ok {
 			return mcp.NewToolResultError("arguments must be a map"), nil
@@ -83,7 +83,7 @@ func GmailReadHandler(client gmail.API) func(ctx context.Context, request mcp.Ca
 			maxBodyBytes = int(mbb)
 		}
 
-		msg, err := client.GetMessage(id)
+		msg, err := client.GetMessage(ctx, id)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to get message: %v", err)), nil
 		}

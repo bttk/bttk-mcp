@@ -63,9 +63,10 @@ func loadConfig(path string) (*config.Config, error) {
 }
 
 func runList(configPath string) {
-	client, _ := setup(configPath)
+	ctx := context.Background()
+	client, _ := setup(ctx, configPath)
 
-	calendars, err := client.ListCalendars()
+	calendars, err := client.ListCalendars(ctx)
 	if err != nil {
 		log.Fatalf("Failed to list calendars: %v", err)
 	}
@@ -78,11 +79,12 @@ func runList(configPath string) {
 }
 
 func runAuth(configPath string) {
+	ctx := context.Background()
 	fmt.Println("Checking Calendar authentication...")
-	client, _ := setup(configPath)
+	client, _ := setup(ctx, configPath)
 
 	fmt.Println("Authentication successful. Verifying API access...")
-	_, err := client.ListCalendars()
+	_, err := client.ListCalendars(ctx)
 	if err != nil {
 		log.Fatalf("API verification failed: %v\n(If you have recently changed scopes, try deleting token.json)", err)
 	}
@@ -91,7 +93,7 @@ func runAuth(configPath string) {
 }
 
 func runServer(configPath string) {
-	client, cfg := setup(configPath)
+	client, cfg := setup(context.Background(), configPath)
 
 	s := server.NewMCPServer(
 		"Calendar MCP",
@@ -114,7 +116,7 @@ func runServer(configPath string) {
 	}
 }
 
-func setup(configPath string) (*calendar.Client, *config.Config) {
+func setup(ctx context.Context, configPath string) (*calendar.Client, *config.Config) {
 	cfg, err := loadConfig(configPath)
 	if err != nil {
 		// Log warning but continue if just config file missing vs struct error?
@@ -126,7 +128,7 @@ func setup(configPath string) (*calendar.Client, *config.Config) {
 	// Note: pkg/calendar/client.go NewClient takes (credentialsPath, tokenPath string)
 	credPath, tokenPath := getCredentialsPaths(cfg)
 
-	client, err := calendar.NewClient(credPath, tokenPath)
+	client, err := calendar.NewClient(ctx, credPath, tokenPath)
 	if err != nil {
 		log.Fatalf("Failed to create calendar client: %v", err)
 	}

@@ -39,7 +39,7 @@ func main() {
 		}
 	}
 
-	client, err := gmail.NewClient(cfg.Gmail.CredentialsFile, cfg.Gmail.TokenFile)
+	client, err := gmail.NewClient(context.Background(), cfg.Gmail.CredentialsFile, cfg.Gmail.TokenFile)
 	if err != nil {
 		log.Fatalf("Failed to create Gmail client: %v", err)
 	}
@@ -55,15 +55,16 @@ func main() {
 }
 
 func runAuth(cfg *config.Config) {
+	ctx := context.Background()
 	fmt.Println("Checking Gmail authentication...")
-	client, err := gmail.NewClient(cfg.Gmail.CredentialsFile, cfg.Gmail.TokenFile)
+	client, err := gmail.NewClient(ctx, cfg.Gmail.CredentialsFile, cfg.Gmail.TokenFile)
 	if err != nil {
 		log.Fatalf("Failed to authenticate: %v", err)
 	}
 	fmt.Println("Authentication successful. Verifying API access...")
 
 	// Perform a simple search to verify the token works for API calls
-	_, err = client.SearchMessages("label:INBOX", 1)
+	_, err = client.SearchMessages(ctx, "label:INBOX", 1)
 	if err != nil {
 		log.Fatalf("API verification failed: %v", err)
 	}

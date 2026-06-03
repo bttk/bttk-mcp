@@ -18,27 +18,27 @@ var errMessageNotFound = errors.New("message not found")
 
 // MockGmailClient is a mock implementation of pkg_gmail.GmailAPI
 type MockGmailClient struct {
-	SearchMessagesFunc func(query string, maxResults int64) ([]*gmail.Message, error)
-	GetMessageFunc     func(id string) (*gmailv1.Message, error)
+	SearchMessagesFunc func(ctx context.Context, query string, maxResults int64) ([]*gmail.Message, error)
+	GetMessageFunc     func(ctx context.Context, id string) (*gmailv1.Message, error)
 }
 
-func (m *MockGmailClient) SearchMessages(query string, maxResults int64) ([]*gmail.Message, error) {
+func (m *MockGmailClient) SearchMessages(ctx context.Context, query string, maxResults int64) ([]*gmail.Message, error) {
 	if m.SearchMessagesFunc != nil {
-		return m.SearchMessagesFunc(query, maxResults)
+		return m.SearchMessagesFunc(ctx, query, maxResults)
 	}
 	return nil, nil
 }
 
-func (m *MockGmailClient) GetMessage(id string) (*gmailv1.Message, error) {
+func (m *MockGmailClient) GetMessage(ctx context.Context, id string) (*gmailv1.Message, error) {
 	if m.GetMessageFunc != nil {
-		return m.GetMessageFunc(id)
+		return m.GetMessageFunc(ctx, id)
 	}
 	return nil, nil
 }
 
 func TestGmailSearch(t *testing.T) {
 	mockClient := &MockGmailClient{
-		SearchMessagesFunc: func(query string, _ int64) ([]*gmail.Message, error) {
+		SearchMessagesFunc: func(_ context.Context, query string, _ int64) ([]*gmail.Message, error) {
 			if query == "test" {
 				return []*gmail.Message{
 					{
@@ -86,7 +86,7 @@ func TestGmailSearch(t *testing.T) {
 
 func TestGmailRead(t *testing.T) {
 	mockClient := &MockGmailClient{
-		GetMessageFunc: func(id string) (*gmailv1.Message, error) {
+		GetMessageFunc: func(_ context.Context, id string) (*gmailv1.Message, error) {
 			if id == "123" {
 				return &gmailv1.Message{
 					Id:       "123",

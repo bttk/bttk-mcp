@@ -20,36 +20,36 @@ import (
 
 // GetClient handles the OAuth2 flow and returns an authenticated HTTP client.
 // It requests scopes for Calendar and Gmail (Read-Only).
-func GetClient(credentialsJSON []byte, tokenPath string) (*http.Client, error) {
+func GetClient(ctx context.Context, credentialsJSON []byte, tokenPath string) (*http.Client, error) {
 	// If modifying these scopes, delete your previously saved token.json.
 	config, err := google.ConfigFromJSON(credentialsJSON, calendar.CalendarScope, gmail.GmailReadonlyScope)
 	if err != nil {
 		return nil, fmt.Errorf("unable to parse client secret file to config: %w", err)
 	}
-	return getClient(config, tokenPath), nil
+	return getClient(ctx, config, tokenPath), nil
 }
 
 // Retrieve a token, saves the token, then returns the generated client.
-func getClient(config *oauth2.Config, tokenPath string) *http.Client {
+func getClient(ctx context.Context, config *oauth2.Config, tokenPath string) *http.Client {
 	// The file token.json stores the user's access and refresh tokens, and is
 	// created automatically when the authorization flow completes for the first
 	// time.
 	tok, err := tokenFromFile(tokenPath)
 	if err != nil {
-		tok = getTokenFromWeb(config)
+		tok = getTokenFromWeb(ctx, config)
 		saveToken(tokenPath, tok)
-		return config.Client(context.Background(), tok)
+		return config.Client(ctx, tok)
 	}
 
 	// Token exists, check if it's expired and refresh if necessary
-	src := config.TokenSource(context.Background(), tok)
+	src := config.TokenSource(ctx, tok)
 	newTok, err := src.Token()
 	if err != nil {
 		// If refresh fails, get a new token
 		fmt.Printf("Unable to refresh token: %v\n", err)
-		tok = getTokenFromWeb(config)
+		tok = getTokenFromWeb(ctx, config)
 		saveToken(tokenPath, tok)
-		return config.Client(context.Background(), tok)
+		return config.Client(ctx, tok)
 	}
 
 	// If token was refreshed, save it
@@ -57,17 +57,17 @@ func getClient(config *oauth2.Config, tokenPath string) *http.Client {
 		saveToken(tokenPath, newTok)
 		tok = newTok
 	}
-	return config.Client(context.Background(), tok)
+	return config.Client(ctx, tok)
 }
 
 // Request a token from the web, then returns the retrieved token.
-func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
+func getTokenFromWeb(ctx context.Context, config *oauth2.Config) *oauth2.Token {
 	// Create a listener on a random port
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		fmt.Printf("Unable to create listener: %v\n", err)
 		// Fallback to manual copy-paste
-		return getTokenFromWebManual(config)
+		return getTokenFromWebManual(ctx, config)
 	}
 	defer l.Close()
 
@@ -110,7 +110,7 @@ func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 		return nil
 	}
 
-	tok, err := config.Exchange(context.TODO(), authCode)
+	tok, err := config.Exchange(ctx, authCode)
 	if err != nil {
 		fmt.Printf("Unable to retrieve token from web: %v\n", err)
 		return nil
@@ -118,7 +118,7 @@ func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 	return tok
 }
 
-func getTokenFromWebManual(config *oauth2.Config) *oauth2.Token {
+func getTokenFromWebManual(ctx context.Context, config *oauth2.Config) *oauth2.Token {
 	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
 	fmt.Printf("Go to the following link in your browser then type the authorization code: \n%v\n", authURL)
 
@@ -128,7 +128,7 @@ func getTokenFromWebManual(config *oauth2.Config) *oauth2.Token {
 		return nil
 	}
 
-	tok, err := config.Exchange(context.TODO(), authCode)
+	tok, err := config.Exchange(ctx, authCode)
 	if err != nil {
 		fmt.Printf("Unable to retrieve token from web: %v\n", err)
 		return nil

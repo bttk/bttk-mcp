@@ -50,20 +50,19 @@ type Message struct {
 // API defines the interface for interacting with Gmail.
 // This allows for mocking in tests.
 type API interface {
-	SearchMessages(query string, maxResults int64) ([]*Message, error)
-	GetMessage(id string) (*gmail.Message, error)
+	SearchMessages(ctx context.Context, query string, maxResults int64) ([]*Message, error)
+	GetMessage(ctx context.Context, id string) (*gmail.Message, error)
 }
 
 // NewClient creates a new Gmail client.
 // It handles the OAuth2 flow if a valid token is not found.
-func NewClient(credentialsPath, tokenPath string) (*Client, error) {
-	ctx := context.Background()
+func NewClient(ctx context.Context, credentialsPath, tokenPath string) (*Client, error) {
 	b, err := os.ReadFile(credentialsPath)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrReadSecret, err)
 	}
 
-	client, err := googleapi.GetClient(b, tokenPath)
+	client, err := googleapi.GetClient(ctx, b, tokenPath)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrParseConfig, err)
 	}
@@ -77,14 +76,13 @@ func NewClient(credentialsPath, tokenPath string) (*Client, error) {
 }
 
 // Update re-configures/re-initializes the Gmail client service thread-safely in-place.
-func (c *Client) Update(credentialsPath, tokenPath string) error {
-	ctx := context.Background()
+func (c *Client) Update(ctx context.Context, credentialsPath, tokenPath string) error {
 	b, err := os.ReadFile(credentialsPath)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrReadSecret, err)
 	}
 
-	client, err := googleapi.GetClient(b, tokenPath)
+	client, err := googleapi.GetClient(ctx, b, tokenPath)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrParseConfig, err)
 	}
@@ -109,7 +107,7 @@ func (c *Client) Disable() {
 
 // SearchMessages searches for messages matching the query.
 // It returns a list of simplified message details.
-func (c *Client) SearchMessages(query string, maxResults int64) ([]*Message, error) {
+func (c *Client) SearchMessages(ctx context.Context, query string, maxResults int64) ([]*Message, error) {
 	c.mu.RLock()
 	srv := c.Service
 	c.mu.RUnlock()
@@ -118,7 +116,7 @@ func (c *Client) SearchMessages(query string, maxResults int64) ([]*Message, err
 	}
 
 	user := "me"
-	r, err := srv.Users.Messages.List(user).Q(query).MaxResults(maxResults).Do()
+	r, err := srv.Users.Messages.List(user).Q(query).MaxResults(maxResults).Context(ctx).Do()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrListMessages, err)
 	}
@@ -129,6 +127,7 @@ func (c *Client) SearchMessages(query string, maxResults int64) ([]*Message, err
 			Format("metadata").
 			MetadataHeaders("To", "From", "Subject", "Date", "Cc").
 			Fields("id", "threadId", "snippet", "payload(headers)").
+			Context(ctx).
 			Do()
 		if err != nil {
 			log.Printf("failed to get message details for ID %s: %v", msg.Id, err)
@@ -168,7 +167,7 @@ func (c *Client) SearchMessages(query string, maxResults int64) ([]*Message, err
 }
 
 // GetMessage retrieves the details of a specific message.
-func (c *Client) GetMessage(id string) (*gmail.Message, error) {
+func (c *Client) GetMessage(ctx context.Context, id string) (*gmail.Message, error) {
 	c.mu.RLock()
 	srv := c.Service
 	c.mu.RUnlock()
@@ -177,7 +176,7 @@ func (c *Client) GetMessage(id string) (*gmail.Message, error) {
 	}
 
 	user := "me"
-	msg, err := srv.Users.Messages.Get(user, id).Format("full").Do()
+	msg, err := srv.Users.Messages.Get(user, id).Format("full").Context(ctx).Do()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrGetMessage, err)
 	}

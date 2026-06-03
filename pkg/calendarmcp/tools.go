@@ -81,8 +81,8 @@ func CalendarListTool() mcp.Tool {
 }
 
 func CalendarListHandler(client calendar.API, config *CalendarConfig) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return func(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		calendarList, err := client.ListCalendars()
+	return func(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		calendarList, err := client.ListCalendars(ctx)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to list calendars: %v", err)), nil
 		}
@@ -129,7 +129,7 @@ func CalendarListEventsTool() mcp.Tool {
 }
 
 func CalendarListEventsHandler(client calendar.API, config *CalendarConfig) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return func(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args, ok := request.Params.Arguments.(map[string]interface{})
 		if !ok {
 			return mcp.NewToolResultError("arguments must be a map"), nil
@@ -157,7 +157,7 @@ func CalendarListEventsHandler(client calendar.API, config *CalendarConfig) func
 			maxResults = int64(val)
 		}
 
-		events, err := client.ListEvents(calendarID, timeMin, timeMax, maxResults)
+		events, err := client.ListEvents(ctx, calendarID, timeMin, timeMax, maxResults)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to list events: %v", err)), nil
 		}
@@ -230,7 +230,7 @@ func parseEventDateTime(val string) (*googleCalendar.EventDateTime, error) {
 }
 
 func CalendarCreateEventHandler(client calendar.API, config *CalendarConfig) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return func(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args, ok := request.Params.Arguments.(map[string]interface{})
 		if !ok {
 			return mcp.NewToolResultError("arguments must be a map"), nil
@@ -284,7 +284,7 @@ func CalendarCreateEventHandler(client calendar.API, config *CalendarConfig) fun
 			Recurrence:  recurrence,
 		}
 
-		createdEvent, err := client.CreateEvent(calendarID, event)
+		createdEvent, err := client.CreateEvent(ctx, calendarID, event)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to create event: %v", err)), nil
 		}
@@ -315,7 +315,7 @@ func CalendarPatchEventTool() mcp.Tool {
 }
 
 func CalendarPatchEventHandler(client calendar.API, config *CalendarConfig) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return func(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args, ok := request.Params.Arguments.(map[string]interface{})
 		if !ok {
 			return mcp.NewToolResultError("arguments must be a map"), nil
@@ -372,7 +372,7 @@ func CalendarPatchEventHandler(client calendar.API, config *CalendarConfig) func
 			event.Recurrence = recurrence
 		}
 
-		patchedEvent, err := client.PatchEvent(calendarID, eventID, event)
+		patchedEvent, err := client.PatchEvent(ctx, calendarID, eventID, event)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to patch event: %v", err)), nil
 		}
@@ -397,7 +397,7 @@ func CalendarDeleteEventTool() mcp.Tool {
 }
 
 func CalendarDeleteEventHandler(client calendar.API, config *CalendarConfig) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return func(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args, ok := request.Params.Arguments.(map[string]interface{})
 		if !ok {
 			return mcp.NewToolResultError("arguments must be a map"), nil
@@ -417,7 +417,7 @@ func CalendarDeleteEventHandler(client calendar.API, config *CalendarConfig) fun
 			return mcp.NewToolResultError("eventId is required"), nil
 		}
 
-		if err := client.DeleteEvent(calendarID, eventID); err != nil {
+		if err := client.DeleteEvent(ctx, calendarID, eventID); err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to delete event: %v", err)), nil
 		}
 
@@ -437,7 +437,7 @@ func CalendarMoveEventTool() mcp.Tool {
 }
 
 func CalendarMoveEventHandler(client calendar.API, config *CalendarConfig) func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return func(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args, ok := request.Params.Arguments.(map[string]interface{})
 		if !ok {
 			return mcp.NewToolResultError("arguments must be a map"), nil
@@ -466,7 +466,7 @@ func CalendarMoveEventHandler(client calendar.API, config *CalendarConfig) func(
 			return mcp.NewToolResultError(fmt.Sprintf("destination calendar: %v", err)), nil
 		}
 
-		movedEvent, err := client.MoveEvent(calendarID, eventID, destinationID)
+		movedEvent, err := client.MoveEvent(ctx, calendarID, eventID, destinationID)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("failed to move event: %v", err)), nil
 		}

@@ -45,24 +45,23 @@ type Client struct {
 // API defines the interface for interacting with Google Calendar.
 // This allows for mocking in tests.
 type API interface {
-	ListCalendars() ([]*calendar.CalendarListEntry, error)
-	ListEvents(calendarID string, timeMin, timeMax string, maxResults int64) ([]*calendar.Event, error)
-	CreateEvent(calendarID string, event *calendar.Event) (*calendar.Event, error)
-	PatchEvent(calendarID, eventID string, event *calendar.Event) (*calendar.Event, error)
-	DeleteEvent(calendarID, eventID string) error
-	MoveEvent(calendarID, eventID, destinationID string) (*calendar.Event, error)
+	ListCalendars(ctx context.Context) ([]*calendar.CalendarListEntry, error)
+	ListEvents(ctx context.Context, calendarID string, timeMin, timeMax string, maxResults int64) ([]*calendar.Event, error)
+	CreateEvent(ctx context.Context, calendarID string, event *calendar.Event) (*calendar.Event, error)
+	PatchEvent(ctx context.Context, calendarID, eventID string, event *calendar.Event) (*calendar.Event, error)
+	DeleteEvent(ctx context.Context, calendarID, eventID string) error
+	MoveEvent(ctx context.Context, calendarID, eventID, destinationID string) (*calendar.Event, error)
 }
 
 // NewClient creates a new Calendar client.
 // It handles the OAuth2 flow if a valid token is not found.
-func NewClient(credentialsPath, tokenPath string) (*Client, error) {
-	ctx := context.Background()
+func NewClient(ctx context.Context, credentialsPath, tokenPath string) (*Client, error) {
 	b, err := os.ReadFile(credentialsPath)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrReadSecret, err)
 	}
 
-	client, err := googleapi.GetClient(b, tokenPath)
+	client, err := googleapi.GetClient(ctx, b, tokenPath)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrParseConfig, err)
 	}
@@ -76,14 +75,13 @@ func NewClient(credentialsPath, tokenPath string) (*Client, error) {
 }
 
 // Update re-configures/re-initializes the Calendar client service thread-safely in-place.
-func (c *Client) Update(credentialsPath, tokenPath string) error {
-	ctx := context.Background()
+func (c *Client) Update(ctx context.Context, credentialsPath, tokenPath string) error {
 	b, err := os.ReadFile(credentialsPath)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrReadSecret, err)
 	}
 
-	client, err := googleapi.GetClient(b, tokenPath)
+	client, err := googleapi.GetClient(ctx, b, tokenPath)
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrParseConfig, err)
 	}
@@ -107,7 +105,7 @@ func (c *Client) Disable() {
 }
 
 // ListCalendars lists the available calendars.
-func (c *Client) ListCalendars() ([]*calendar.CalendarListEntry, error) {
+func (c *Client) ListCalendars(ctx context.Context) ([]*calendar.CalendarListEntry, error) {
 	c.mu.RLock()
 	srv := c.Service
 	c.mu.RUnlock()
@@ -115,7 +113,7 @@ func (c *Client) ListCalendars() ([]*calendar.CalendarListEntry, error) {
 		return nil, ErrNotInitialized
 	}
 
-	list, err := srv.CalendarList.List().Do()
+	list, err := srv.CalendarList.List().Context(ctx).Do()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrListCalendars, err)
 	}
@@ -123,7 +121,7 @@ func (c *Client) ListCalendars() ([]*calendar.CalendarListEntry, error) {
 }
 
 // ListEvents lists upcoming events from the specified calendar.
-func (c *Client) ListEvents(calendarID string, timeMin, timeMax string, maxResults int64) ([]*calendar.Event, error) {
+func (c *Client) ListEvents(ctx context.Context, calendarID string, timeMin, timeMax string, maxResults int64) ([]*calendar.Event, error) {
 	if timeMin == "" {
 		timeMin = time.Now().Format(time.RFC3339)
 	}
@@ -145,7 +143,7 @@ func (c *Client) ListEvents(calendarID string, timeMin, timeMax string, maxResul
 		call = call.MaxResults(maxResults)
 	}
 
-	events, err := call.Do()
+	events, err := call.Context(ctx).Do()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrListEvents, err)
 	}
@@ -153,7 +151,7 @@ func (c *Client) ListEvents(calendarID string, timeMin, timeMax string, maxResul
 }
 
 // CreateEvent creates a new event in the specified calendar.
-func (c *Client) CreateEvent(calendarID string, event *calendar.Event) (*calendar.Event, error) {
+func (c *Client) CreateEvent(ctx context.Context, calendarID string, event *calendar.Event) (*calendar.Event, error) {
 	c.mu.RLock()
 	srv := c.Service
 	c.mu.RUnlock()
@@ -161,7 +159,7 @@ func (c *Client) CreateEvent(calendarID string, event *calendar.Event) (*calenda
 		return nil, ErrNotInitialized
 	}
 
-	createdEvent, err := srv.Events.Insert(calendarID, event).Do()
+	createdEvent, err := srv.Events.Insert(calendarID, event).Context(ctx).Do()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrCreateEvent, err)
 	}
@@ -169,7 +167,7 @@ func (c *Client) CreateEvent(calendarID string, event *calendar.Event) (*calenda
 }
 
 // PatchEvent patches an existing event in the specified calendar.
-func (c *Client) PatchEvent(calendarID, eventID string, event *calendar.Event) (*calendar.Event, error) {
+func (c *Client) PatchEvent(ctx context.Context, calendarID, eventID string, event *calendar.Event) (*calendar.Event, error) {
 	c.mu.RLock()
 	srv := c.Service
 	c.mu.RUnlock()
@@ -177,7 +175,7 @@ func (c *Client) PatchEvent(calendarID, eventID string, event *calendar.Event) (
 		return nil, ErrNotInitialized
 	}
 
-	patchedEvent, err := srv.Events.Patch(calendarID, eventID, event).Do()
+	patchedEvent, err := srv.Events.Patch(calendarID, eventID, event).Context(ctx).Do()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrPatchEvent, err)
 	}
@@ -185,7 +183,7 @@ func (c *Client) PatchEvent(calendarID, eventID string, event *calendar.Event) (
 }
 
 // DeleteEvent deletes an event from the specified calendar.
-func (c *Client) DeleteEvent(calendarID, eventID string) error {
+func (c *Client) DeleteEvent(ctx context.Context, calendarID, eventID string) error {
 	c.mu.RLock()
 	srv := c.Service
 	c.mu.RUnlock()
@@ -193,7 +191,7 @@ func (c *Client) DeleteEvent(calendarID, eventID string) error {
 		return ErrNotInitialized
 	}
 
-	err := srv.Events.Delete(calendarID, eventID).Do()
+	err := srv.Events.Delete(calendarID, eventID).Context(ctx).Do()
 	if err != nil {
 		return fmt.Errorf("%w: %w", ErrDeleteEvent, err)
 	}
@@ -201,7 +199,7 @@ func (c *Client) DeleteEvent(calendarID, eventID string) error {
 }
 
 // MoveEvent moves an event to another calendar.
-func (c *Client) MoveEvent(calendarID, eventID, destinationID string) (*calendar.Event, error) {
+func (c *Client) MoveEvent(ctx context.Context, calendarID, eventID, destinationID string) (*calendar.Event, error) {
 	c.mu.RLock()
 	srv := c.Service
 	c.mu.RUnlock()
@@ -209,7 +207,7 @@ func (c *Client) MoveEvent(calendarID, eventID, destinationID string) (*calendar
 		return nil, ErrNotInitialized
 	}
 
-	movedEvent, err := srv.Events.Move(calendarID, eventID, destinationID).Do()
+	movedEvent, err := srv.Events.Move(calendarID, eventID, destinationID).Context(ctx).Do()
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrMoveEvent, err)
 	}

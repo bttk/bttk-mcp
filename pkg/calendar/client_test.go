@@ -52,7 +52,7 @@ func TestListCalendars(t *testing.T) {
 	ts, client := setupTestServer(t)
 	defer ts.Close()
 
-	list, err := client.ListCalendars()
+	list, err := client.ListCalendars(context.Background())
 	require.NoError(t, err)
 	assert.Len(t, list, 1)
 	assert.Equal(t, "cal1", list[0].Id)
@@ -65,7 +65,7 @@ func TestListEvents(t *testing.T) {
 	// Capture request to verify defaults
 	// We need a more complex handler to verify defaults, but for now checking it returns items is a good start.
 
-	events, err := client.ListEvents("primary", "", "", 0)
+	events, err := client.ListEvents(context.Background(), "primary", "", "", 0)
 	require.NoError(t, err)
 	assert.Len(t, events, 1)
 	assert.Equal(t, "evt1", events[0].Id)
@@ -76,7 +76,7 @@ func TestCreateEvent(t *testing.T) {
 	defer ts.Close()
 
 	event := &calendar.Event{Summary: "New Event"}
-	created, err := client.CreateEvent("primary", event)
+	created, err := client.CreateEvent(context.Background(), "primary", event)
 	require.NoError(t, err)
 	assert.Equal(t, "evt1", created.Id)
 	assert.Equal(t, "evt1", created.Id)
@@ -87,7 +87,7 @@ func TestPatchEvent(t *testing.T) {
 	defer ts.Close()
 
 	event := &calendar.Event{Summary: "Patched Event"}
-	patched, err := client.PatchEvent("primary", "evt1", event)
+	patched, err := client.PatchEvent(context.Background(), "primary", "evt1", event)
 	require.NoError(t, err)
 	assert.Equal(t, "evt1", patched.Id)
 	assert.Equal(t, "Patched Event", patched.Summary)
@@ -97,7 +97,7 @@ func TestDeleteEvent(t *testing.T) {
 	ts, client := setupTestServer(t)
 	defer ts.Close()
 
-	err := client.DeleteEvent("primary", "evt1")
+	err := client.DeleteEvent(context.Background(), "primary", "evt1")
 	require.NoError(t, err)
 }
 
@@ -126,6 +126,6 @@ func TestListEvents_Defaults(t *testing.T) {
 	require.NoError(t, err)
 	client := &Client{Service: srv}
 
-	_, err = client.ListEvents("primary", "", "", 0)
+	_, err = client.ListEvents(context.Background(), "primary", "", "", 0)
 	require.NoError(t, err)
 }
