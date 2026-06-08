@@ -233,26 +233,6 @@ func TestClient_Search_JsonLogic(t *testing.T) {
 	assert.Equal(t, "a.md", results[0].Filename)
 }
 
-func TestClient_Search_Dataview(t *testing.T) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/search/", func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "POST", r.Method)
-		assert.Equal(t, "application/vnd.olrapi.dataview.dql+txt", r.Header.Get("Content-Type"))
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `[{"filename": "b.md", "result": "some value"}]`)
-	})
-	server := httptest.NewServer(mux)
-	defer server.Close()
-
-	client, err := NewClient(server.URL, "test-token")
-	require.NoError(t, err)
-
-	results, err := client.Search.Dataview(context.Background(), "TABLE FROM \"folder\"")
-	require.NoError(t, err)
-	require.Len(t, results, 1)
-	assert.Equal(t, "b.md", results[0].Filename)
-}
-
 func TestClient_Vault_Move(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/vault/source.md", func(w http.ResponseWriter, r *http.Request) {

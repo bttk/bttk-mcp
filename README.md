@@ -18,7 +18,6 @@ The combined MCP server merges Gmail, Google Calendar, and Obsidian tools into a
     *   `obsidian_list_files`: List files in the vault.
     *   `obsidian_search_simple`: Simple text search.
     *   `obsidian_search_json_logic`: JSON Logic search.
-    *   `obsidian_search_dql`: Dataview Query Language search.
     *   `obsidian_append_active_file`: Append content to the active file.
     *   `obsidian_open_file`: Open a file in Obsidian UI.
 *   **Gmail Tools:**
@@ -96,7 +95,6 @@ Tools are configured via a JSON configuration file (default: `~/.config/bttk-mcp
             "get_active_file": true,
             "search_simple": true,
             "search_json_logic": true,
-            "search_dql": true,
             "get_file": true,
             "list_files": true,
             "open_file": true,

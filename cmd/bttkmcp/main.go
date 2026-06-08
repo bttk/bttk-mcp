@@ -86,15 +86,6 @@ var allTools = []struct {
 		},
 	},
 	{
-		name:        "search_dql",
-		mcpName:     "obsidian_search_dql",
-		serviceName: "obsidian",
-		getTool:     obsidianmcp.SearchDQLTool,
-		getHandler: func(obs *obsidian.Client, _ *calendar.Client, _ *calendarmcp.CalendarConfig, _ *gmail.Client) server.ToolHandlerFunc {
-			return obsidianmcp.SearchDQLHandler(obs)
-		},
-	},
-	{
 		name:        "get_daily_note",
 		mcpName:     "obsidian_get_daily_note",
 		serviceName: "obsidian",

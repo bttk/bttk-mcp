@@ -72,17 +72,3 @@ func (s *SearchService) JSONLogic(ctx context.Context, query interface{}) ([]JSO
 	err = s.client.do(req, &results)
 	return results, err
 }
-
-// Dataview performs a search using Dataview Query Language (DQL).
-func (s *SearchService) Dataview(ctx context.Context, dql string) ([]JSONLogicResult, error) {
-	u := s.client.BaseURL().ResolveReference(&url.URL{Path: "search/"})
-	req, err := http.NewRequestWithContext(ctx, "POST", u.String(), bytes.NewReader([]byte(dql)))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/vnd.olrapi.dataview.dql+txt")
-
-	var results []JSONLogicResult
-	err = s.client.do(req, &results)
-	return results, err
-}

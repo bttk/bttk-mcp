@@ -13,7 +13,6 @@
             "patch_active_file": false,
             "search_simple": true,
             "search_json_logic": true,
-            "search_dql": true,
             "get_daily_note": true,
             "get_file": false,
             "list_files": false,
